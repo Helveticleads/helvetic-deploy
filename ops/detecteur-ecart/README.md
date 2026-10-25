@@ -55,4 +55,4 @@ Si un site est `EN_RETARD` et que les messages de commit depuis la page servie p
 
 ## Fixtures de test
 
-Exemples sous `fixtures/` (ex. `publication.brouillon`). Jamais à la racine de Helveticleads-deploy.
+Exemples sous `fixtures/` (ex. `publication.brouillon`). Jamais à la racine de helvetic-deploy.

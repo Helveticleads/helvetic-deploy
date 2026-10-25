@@ -19,5 +19,5 @@ redevient pas rouge si l'ecriture d'issue echoue. Dans ce cas le step ecrit :
 VERDICT NON NOTIFIÉ : <raison>
 ```
 
-Les scripts s'executent depuis le checkout sparse de `Helveticleads/Helveticleads-deploy`
+Les scripts s'executent depuis le checkout sparse de `Helveticleads/helvetic-deploy`
 (`ops/deploy-verdict/`). `preuve-derive.sh` refuse tout autre prefixe.

@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 # Sonde d'épinglage : quelle ref chaque appelant utilise, écart v1↔main, âge de v1.
 # Toujours parle, même à écart 0.
-# Env : GH_TOKEN, REPOS_FILE (owner/name une par ligne), DEPLOY_REPO (défaut Helveticleads/Helveticleads-deploy)
+# Env : GH_TOKEN, REPOS_FILE (owner/name une par ligne), DEPLOY_REPO (défaut Helveticleads/helvetic-deploy)
 set -euo pipefail
 
-DEPLOY_REPO="${DEPLOY_REPO:-Helveticleads/Helveticleads-deploy}"
+DEPLOY_REPO="${DEPLOY_REPO:-Helveticleads/helvetic-deploy}"
 REPOS_FILE="${REPOS_FILE:?REPOS_FILE manquant}"
 
 main_sha=$(gh api "repos/$DEPLOY_REPO/commits/main" --jq .sha)
@@ -63,7 +63,7 @@ while IFS= read -r repo || [ -n "$repo" ]; do
         main) n_main=$((n_main + 1));;
         *) n_other=$((n_other + 1)); other_list+=("$full:$name@$ref");;
       esac
-    done < <(printf '%s\n' "$text" | grep -E 'Helveticleads-deploy/\.github/workflows/.*\.yml@' || true)
+    done < <(printf '%s\n' "$text" | grep -E 'helvetic-deploy/\.github/workflows/.*\.yml@' || true)
   done
   if [ -z "$found_ref" ]; then
     n_other=$((n_other + 1))
