@@ -49,11 +49,11 @@ interdiction de mise à jour et de suppression, sauf contournement du rôle
 **Admin** du dépôt. Un `--force` au hasard est refusé ; le déplacement reste un
 geste délibéré du propriétaire.
 
-Voir : https://github.com/Helveticleads/Helveticleads-deploy/rules/25349145
+Voir : https://github.com/Helveticleads/helvetic-deploy/rules/25349145
 
 ## Qui décide, sur quelle preuve
 
-Frédéric décide. Un CI vert de Helveticleads-deploy ne suffit pas : il ne bâtit
+Frédéric décide. Un CI vert de helvetic-deploy ne suffit pas : il ne bâtit
 aucun site.
 
 Avant de déplacer `v1` :
@@ -72,7 +72,7 @@ Avant de déplacer `v1` :
 4. Créer le tag immuable au SHA de `main` :
    ```bash
    git fetch origin main
-   git tag -a v1.N.0 origin/main -m "Helveticleads-deploy v1.N.0 — <motif>"
+   git tag -a v1.N.0 origin/main -m "helvetic-deploy v1.N.0 — <motif>"
    git push origin v1.N.0
    ```
 5. Sonde KPI : lire l’écart `main` ↔ `v1` (doit montrer les commits à promouvoir).
@@ -80,7 +80,7 @@ Avant de déplacer `v1` :
    ```bash
    git fetch origin tag v1
    git tag -d v1
-   git tag -a v1 origin/main -m "Helveticleads-deploy v1 → v1.N.0 (<motif>)"
+   git tag -a v1 origin/main -m "helvetic-deploy v1 → v1.N.0 (<motif>)"
    git push --force-with-lease=refs/tags/v1:$(git rev-parse refs/tags/v1^{}) origin refs/tags/v1
    ```
    Si `--force-with-lease` sur un tag annoté est refusé par le client, le
@@ -112,4 +112,4 @@ Nom tranché : `premium-helvetic-leads` (nom commercial, pas l'entité juridique
 Ne rien transférer tant que les quatre sites nuisibles neufs ne servent pas leur
 contenu. Pilote hors prod : `FR-helvetique-ia.ch` ou `FR-helvetique-web.ch`,
 pas un des quatre. Ordre : pilote → préparer les `uses:` → transférer
-`Helveticleads-deploy` → fusionner les `uses:` → reste du parc.
+`helvetic-deploy` → fusionner les `uses:` → reste du parc.

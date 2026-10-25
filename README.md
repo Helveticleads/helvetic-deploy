@@ -1,1 +1,1 @@
-# Helveticleads-deploy — workflows CI réutilisables (déploiement VPS Infomaniak)
+# helvetic-deploy — workflows CI réutilisables (déploiement VPS Infomaniak)

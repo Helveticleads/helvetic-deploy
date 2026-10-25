@@ -34,7 +34,7 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 OWNER="${DETECTEUR_OWNER:-Helveticleads}"
-REPO_DEPLOY="${DETECTEUR_REPO:-Helveticleads/Helveticleads-deploy}"
+REPO_DEPLOY="${DETECTEUR_REPO:-Helveticleads/helvetic-deploy}"
 TOLERANCE_SEC=$((2 * 3600))
 BROUILLON_DORMANT_SEC=$((60 * 24 * 3600))
 ISSUE_TITLE="Écart fusionné ↔ servi"
@@ -934,7 +934,7 @@ BODY_FILE="$RESULT_DIR/issue-body.md"
   markdown_table "$RESULT_DIR/a-jour.tsv" "À jour"
   echo "---"
   echo
-  echo "_Écart = diff `SHA du dernier Deploy réussi...main` : fichiers, lignes ajoutées, lignes retirées. Une durée ne mesure pas cet écart. L'horloge Last-Modified reste affichée, elle ne classe plus._"
+  echo "_Écart = diff (SHA du dernier Deploy réussi...main) : fichiers, lignes ajoutées, lignes retirées. Une durée ne mesure pas cet écart. L'horloge Last-Modified reste affichée, elle ne classe plus._"
   echo
   echo "_Marqueur \`.helveticleads/publication\` : absent = en_ligne. brouillon = hors population (âge affiché). ≥ 60 j → BROUILLON_DORMANT. INJOIGNABLE après 2 passages. Clôture : pas EN_RETARD / INJOIGNABLE / BROUILLON_DORMANT / auth._"
   echo
@@ -974,7 +974,7 @@ invalider_commentaires_conclusifs() {
   local nodes nid body
   nodes=$(gh_issue api graphql -f query="
     query {
-      repository(owner:\"Helveticleads\", name:\"Helveticleads-deploy\") {
+      repository(owner:\"Helveticleads\", name:\"helvetic-deploy\") {
         issue(number: $num) {
           comments(first: 50) {
             nodes { id body isMinimized }
