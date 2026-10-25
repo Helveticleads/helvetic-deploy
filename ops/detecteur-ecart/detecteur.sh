@@ -934,7 +934,7 @@ BODY_FILE="$RESULT_DIR/issue-body.md"
   markdown_table "$RESULT_DIR/a-jour.tsv" "À jour"
   echo "---"
   echo
-  echo "_Écart = diff `SHA du dernier Deploy réussi...main` : fichiers, lignes ajoutées, lignes retirées. Une durée ne mesure pas cet écart. L'horloge Last-Modified reste affichée, elle ne classe plus._"
+  echo "_Écart = diff \`SHA du dernier Deploy réussi...main\` : fichiers, lignes ajoutées, lignes retirées. Une durée ne mesure pas cet écart. L'horloge Last-Modified reste affichée, elle ne classe plus._"
   echo
   echo "_Marqueur \`.helveticleads/publication\` : absent = en_ligne. brouillon = hors population (âge affiché). ≥ 60 j → BROUILLON_DORMANT. INJOIGNABLE après 2 passages. Clôture : pas EN_RETARD / INJOIGNABLE / BROUILLON_DORMANT / auth._"
   echo
