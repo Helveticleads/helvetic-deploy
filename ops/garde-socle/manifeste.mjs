@@ -24,6 +24,7 @@ const FICHIERS = [
   { source: "src/components/layout/StickyMobileCTA.tsx", chemin: "src/components/layout/StickyMobileCTA.tsx" },
   { source: "src/components/socle/CanalWhatsapp.tsx", chemin: "src/components/socle/CanalWhatsapp.tsx" },
   { source: "src/components/socle/BlocConsentement.tsx", chemin: "src/components/socle/BlocConsentement.tsx" },
+  { source: "src/components/HeroForm.tsx", chemin: "src/components/HeroForm.tsx" },
   { source: "src/data/navigation.ts", chemin: "src/data/navigation.ts" },
   { source: "src/lib/api.ts", chemin: "src/lib/api.ts" },
   { source: "scripts/socle-404.mjs", chemin: "scripts/socle-404.mjs" },

@@ -24,6 +24,11 @@
       "empreinte": "0c0cdda5ad18e8a63498c39f17c0eab4e23b62ecdded6298e10a93268275a243"
     },
     {
+      "source": "src/components/HeroForm.tsx",
+      "chemin": "src/components/HeroForm.tsx",
+      "empreinte": "47ceaba983cb11df4e953f8c96e37a175750bfaedee26b04cf1012f08fb5dab6"
+    },
+    {
       "source": "src/data/navigation.ts",
       "chemin": "src/data/navigation.ts",
       "empreinte": "5b42e69335ea865240f08dbaac757aeafd826ff4a9288ab540bce07807495fac"
