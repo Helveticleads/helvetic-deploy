@@ -25,6 +25,16 @@ on:
         required: false
         type: string
         default: ""
+      garde_socle:
+        description: "OPT-IN, sites du bâtiment uniquement. true = comparer la copie du socle de ce site au gabarit de référence (socle/batiment) au SHA de ce workflow. Absent ou false = aucune étape ajoutée, comportement inchangé pour tous les autres appelants, nuisibles compris."
+        required: false
+        type: boolean
+        default: false
+      garde_socle_chemin:
+        description: "Chemin du paquet du site qui porte la copie du socle, relatif à la racine du dépôt appelant (ex. artifacts/helvetique-carrelage). Lu seulement quand garde_socle vaut true."
+        required: false
+        type: string
+        default: ""
 
 
 concurrency:
@@ -97,6 +107,34 @@ jobs:
             ops/garde-assets
             ops/mesure-rendu
           sparse-checkout-cone-mode: false
+
+      # OPT-IN bâtiment. Sans `garde_socle: true`, ces deux étapes sont sautées
+      # et le job est exactement celui d'avant : aucune étape ajoutée au chemin
+      # des autres appelants (nuisibles compris). Preuve : ops/garde-socle/preuve-opt-in.mjs
+      - name: Gabarit du socle batiment (opt-in)
+        if: ${{ inputs.garde_socle }}
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ job.workflow_repository }}
+          ref: ${{ job.workflow_sha }}
+          path: _socle_batiment
+          sparse-checkout: |
+            socle/batiment
+            ops/garde-socle
+          sparse-checkout-cone-mode: false
+
+      - name: Garde de conformite du socle batiment (opt-in)
+        if: ${{ inputs.garde_socle }}
+        run: |
+          set -euo pipefail
+          SITE="${{ inputs.garde_socle_chemin }}"
+          if [ -z "$SITE" ]; then
+            echo "GATE_FAIL socle:garde_socle_chemin_absent"
+            exit 1
+          fi
+          node "$GITHUB_WORKSPACE/_socle_batiment/ops/garde-socle/verifier.mjs" \
+            "$GITHUB_WORKSPACE/$SITE" \
+            --reference "$GITHUB_WORKSPACE/_socle_batiment/socle/batiment"
 
       - name: Gates build-time
         run: |
