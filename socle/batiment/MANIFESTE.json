@@ -1,0 +1,52 @@
+{
+  "socle": "batiment",
+  "version": 1,
+  "note": "Empreintes du contenu normalise (zones libres retirees). Refaire avec: node ops/garde-socle/manifeste.mjs",
+  "fichiers": [
+    {
+      "source": "src/components/layout/Header.tsx",
+      "chemin": "src/components/layout/Header.tsx",
+      "empreinte": "6fedfed5c20190b910dd5788ceeafe0580e15bc666fbceb60a9afc0a4ae61bc3"
+    },
+    {
+      "source": "src/components/layout/StickyMobileCTA.tsx",
+      "chemin": "src/components/layout/StickyMobileCTA.tsx",
+      "empreinte": "e088d76e7ccdd66055d45868f39c5408e73b022c1867821555e2f4a108f3194e"
+    },
+    {
+      "source": "src/components/socle/CanalWhatsapp.tsx",
+      "chemin": "src/components/socle/CanalWhatsapp.tsx",
+      "empreinte": "f9137c30326f91887c56671b9befe13dc2b022a29c726bd75fbc2f5a82dd126b"
+    },
+    {
+      "source": "src/components/socle/BlocConsentement.tsx",
+      "chemin": "src/components/socle/BlocConsentement.tsx",
+      "empreinte": "0c0cdda5ad18e8a63498c39f17c0eab4e23b62ecdded6298e10a93268275a243"
+    },
+    {
+      "source": "src/data/navigation.ts",
+      "chemin": "src/data/navigation.ts",
+      "empreinte": "5b42e69335ea865240f08dbaac757aeafd826ff4a9288ab540bce07807495fac"
+    },
+    {
+      "source": "src/lib/api.ts",
+      "chemin": "src/lib/api.ts",
+      "empreinte": "0d0de7e6e03724f39f3687e9df0fa2f84c566c8f6faea34409297496b3c3b5ad"
+    },
+    {
+      "source": "scripts/socle-404.mjs",
+      "chemin": "scripts/socle-404.mjs",
+      "empreinte": "9b8571a17a9c0fed2899b048a38b8f1451e0b6d4cd60e43cd1e7951c2defccff"
+    },
+    {
+      "source": "deploy/csp-batiment.conf",
+      "chemin": "deploy/csp-batiment.conf",
+      "empreinte": "2f520bce914ce9a0251744e56bdcfff66f7b8dc9e836d8ebcbbb5ee1578ebd6c"
+    },
+    {
+      "source": "../../ops/garde-socle/verifier.mjs",
+      "chemin": "scripts/garde-socle.mjs",
+      "empreinte": "7a895f62a89a7c15cb74497cfbee2a13026ddf091dcfc9a1071edfbb949d325a"
+    }
+  ]
+}
