@@ -49,11 +49,31 @@ import { useEffect, useState } from "react";
 import { Link, useLocation } from "wouter";
 import { Menu, Phone, X } from "lucide-react";
 import { Logo } from "@/components/Logo";
-import { Button } from "@/components/ui/button";
 import { CanalWhatsapp } from "@/components/socle/CanalWhatsapp";
 import { NAV } from "@/data/navigation";
 import { SITE_CONFIG, phoneHref, phoneMention } from "@/data/config";
 import { cn } from "@/lib/utils";
+
+/*
+ * Le bouton de devis est ECRIT ICI, et non pris au composant Button du site.
+ * Les deux familles du parc n'ont pas le meme Button : celle des sites Claude
+ * Code prend `href`, `variant` et `size` ; celle des sites Replit est un
+ * bouton shadcn, avec `asChild` et d'autres variantes. Le socle ne peut pas
+ * dependre de l'une des deux.
+ *
+ * Les classes sont celles que rendait `variant="primary"` : le dessin ne
+ * change pas d'un pixel sur les sites qui avaient deja le socle. Le survol
+ * retombe sur la couleur d'accent quand le site ne declare pas de couleur de
+ * survol, ce qui est le cas de toute la famille Replit.
+ */
+const BOUTON_DEVIS =
+  "inline-flex items-center justify-center gap-2 font-semibold rounded-xl transition-all" +
+  " focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-ring)]" +
+  " focus-visible:ring-offset-2 bg-accent text-accent-foreground shadow-sm" +
+  " hover:bg-[var(--color-accent-hover,var(--color-accent))]";
+
+const BOUTON_DEVIS_MD = "px-5 py-2.5 text-sm";
+const BOUTON_DEVIS_LG = "px-6 py-3.5 text-base";
 
 /** `/villes/` et `/villes` sont la meme page. */
 function normaliserChemin(chemin: string): string {
@@ -144,9 +164,12 @@ export function Header() {
             </a>
           ) : null}
 
-          <Button href="/contact" variant="primary" className="hidden lg:inline-flex">
+          <Link
+            href="/contact"
+            className={cn(BOUTON_DEVIS, BOUTON_DEVIS_MD, "hidden lg:inline-flex")}
+          >
             Devis gratuit
-          </Button>
+          </Link>
 
           <button
             type="button"
@@ -192,9 +215,9 @@ export function Header() {
 
             <CanalWhatsapp variante="plein" libelle="Ecrire sur WhatsApp" className="mt-4 flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-[#128C7E] text-base font-semibold text-white" />
 
-            <Button href="/contact" variant="primary" className="mt-4" size="lg">
+            <Link href="/contact" className={cn(BOUTON_DEVIS, BOUTON_DEVIS_LG, "mt-4 w-full")}>
               Demander un devis gratuit
-            </Button>
+            </Link>
           </nav>
         </div>
       ) : null}

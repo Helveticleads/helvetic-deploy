@@ -277,6 +277,10 @@ export function verifier({ site, manifeste, reference }) {
   for (const entree of manifeste.fichiers) {
     const copie = path.join(site, entree.chemin);
     if (!fs.existsSync(copie)) {
+      /* Un fichier optionnel absent n'est pas un defaut : le contrat qu'il
+         porte est garde par les mesures d'effet, qui ne dependent d'aucun
+         gabarit. Present, il doit etre conforme. */
+      if (entree.optionnel) continue;
       defauts.push(`absent:${entree.chemin} (fichier du socle manquant dans ce site)`);
       continue;
     }

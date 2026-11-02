@@ -24,7 +24,16 @@ const FICHIERS = [
   { source: "src/components/layout/StickyMobileCTA.tsx", chemin: "src/components/layout/StickyMobileCTA.tsx" },
   { source: "src/components/socle/CanalWhatsapp.tsx", chemin: "src/components/socle/CanalWhatsapp.tsx" },
   { source: "src/components/socle/BlocConsentement.tsx", chemin: "src/components/socle/BlocConsentement.tsx" },
-  { source: "src/components/HeroForm.tsx", chemin: "src/components/HeroForm.tsx" },
+  /*
+   * OPTIONNEL. Le formulaire d'accueil en etapes n'existe pas partout : la
+   * famille Replit en a un autre, bati sur `src/data/form-steps.ts` et non sur
+   * `src/data/heroFormConfig.ts`. Le CONTRAT, lui, est garde partout, et par
+   * des mesures d'effet qui ne dependent d'aucun gabarit : tout fichier qui
+   * construit une charge de lead monte le bloc de consentement, verifie le
+   * nom, n'ecrit jamais `consent: true` en dur et fait partir le piege.
+   * Quand le fichier EXISTE, il doit etre conforme.
+   */
+  { source: "src/components/HeroForm.tsx", chemin: "src/components/HeroForm.tsx", optionnel: true },
   { source: "src/data/navigation.ts", chemin: "src/data/navigation.ts" },
   { source: "src/lib/api.ts", chemin: "src/lib/api.ts" },
   { source: "scripts/socle-404.mjs", chemin: "scripts/socle-404.mjs" },

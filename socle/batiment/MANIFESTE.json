@@ -6,7 +6,7 @@
     {
       "source": "src/components/layout/Header.tsx",
       "chemin": "src/components/layout/Header.tsx",
-      "empreinte": "6fedfed5c20190b910dd5788ceeafe0580e15bc666fbceb60a9afc0a4ae61bc3"
+      "empreinte": "46fa49511f808f0b8e99b186b87b6ba6e925a51d6d379f94039576a1c9737a8a"
     },
     {
       "source": "src/components/layout/StickyMobileCTA.tsx",
@@ -26,6 +26,7 @@
     {
       "source": "src/components/HeroForm.tsx",
       "chemin": "src/components/HeroForm.tsx",
+      "optionnel": true,
       "empreinte": "94832a0afbb748cc800b6001fb82fc0e816bdf2dcf2183d2a4ae3b2b0a187f9a"
     },
     {
@@ -51,7 +52,7 @@
     {
       "source": "../../ops/garde-socle/verifier.mjs",
       "chemin": "scripts/garde-socle.mjs",
-      "empreinte": "e343b5244a6d10820942714c9b2cc4af63c4069860b56032af3cfc6251b55fda"
+      "empreinte": "5b6a736d8308b9866e09e43797a5d109ff9581d88d0e4625798018d56ea2dccb"
     }
   ]
 }

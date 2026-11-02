@@ -93,6 +93,10 @@ for (const entree of manifeste.fichiers) {
   const destination = path.join(site, entree.chemin);
   fs.mkdirSync(path.dirname(destination), { recursive: true });
   const gabarit = fs.readFileSync(source, "utf8");
+  if (entree.optionnel && !fs.existsSync(destination)) {
+    console.log(`  saute ${entree.chemin} (optionnel, absent de ce site)`);
+    continue;
+  }
   if (!fs.existsSync(destination)) {
     fs.writeFileSync(destination, gabarit, "utf8");
     poses += 1;
