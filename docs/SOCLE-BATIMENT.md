@@ -164,13 +164,16 @@ rien de ce qui est ecrit ici n'atteint un seul site.
 
 ---
 
-## 3. Ce qui reste a trancher
+## 3. Tranche, et ce qui reste a trancher
 
-- **Le libelle de la mention posee a cote du numero.** `phoneMention` est vide
-  partout. Les heures d'ouverture deja ecrites dans `SITE_CONFIG.hours` sont
-  celles du metier, pas celles de la ligne : les afficher a cote du numero
-  dirait une chose fausse. La ligne sera d'abord en messagerie, puis en renvoi
-  du lundi au vendredi de 10h00 a 19h00. Le texte est a ecrire par Frederic.
+- **La mention posee a cote du numero : RIEN.** Decision de Frederic du
+  02.11.2026 : le numero paraitra seul. `phoneMention` reste donc vide sur les
+  27 sites. Le champ est garde parce qu'il coute zero pixel quand il est vide,
+  et parce qu'il evite qu'un site reinvente sa propre ligne de mention : le
+  gabarit ne rend AUCUN element quand la valeur est vide, donc aucun trou, et
+  la seule facon d'afficher un texte a cote du numero reste cette valeur unique.
+  Les heures de `SITE_CONFIG.hours` sont celles du metier, pas celles de la
+  ligne : elles n'ont jamais leur place ici.
 - **Le seuil `xl` du numero.** Il est pose a 1280 px par le gabarit. Les
   captures du lot 1 le montrent tenir a 1280 et a 1024 ; il n'a pas ete mesure
   sur un site dont le menu serait plus long.
