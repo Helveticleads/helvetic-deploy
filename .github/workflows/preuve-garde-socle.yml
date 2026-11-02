@@ -1,0 +1,33 @@
+name: Preuves du socle batiment
+
+# Le gabarit du socle n'a pas de paquet a lui : ces preuves le montent a part.
+# Contre-epreuve sur le dernier tag : git doit voir les tags et l'historique.
+on:
+  pull_request:
+    paths:
+      - socle/batiment/**
+      - ops/garde-socle/**
+      - .github/workflows/preuve-garde-socle.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  preuves-socle:
+    name: preuves-socle
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Le manifeste correspond aux fichiers du socle
+        run: |
+          node ops/garde-socle/manifeste.mjs
+          git diff --exit-code -- socle/batiment/MANIFESTE.json
+      - name: Double clic du formulaire d'accueil
+        run: node ops/garde-socle/preuve-double-clic.mjs v1.3.0

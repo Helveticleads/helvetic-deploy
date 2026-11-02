@@ -10,7 +10,7 @@
  * `border-border`, `font-display`) : chaque site garde sa palette et sa
  * typographie.
  */
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, useLocation } from "wouter";
 import { ArrowLeft, ArrowRight, Check, Loader2, ShieldCheck } from "lucide-react";
 import { Icon } from "@/components/Icon";
@@ -64,14 +64,26 @@ export function HeroForm({
   const total = FORM_STEPS.length;
   const progress = Math.round(((step + (current.kind === "contact" ? 1 : 0)) / total) * 100);
 
+  /* Pendant la transition, l'ancienne etape reste cliquable : un seul avancement par etape. */
+  const enTransition = useRef(false);
+  useEffect(() => {
+    const t = setTimeout(() => { enTransition.current = false; }, 300);
+    return () => clearTimeout(t);
+  }, [step]);
+
   function next() {
+    if (enTransition.current || step >= total - 1) return;
+    enTransition.current = true;
     setStep((s) => Math.min(s + 1, total - 1));
   }
   function back() {
+    if (enTransition.current || step <= 0) return;
+    enTransition.current = true;
     setError(null);
     setStep((s) => Math.max(s - 1, 0));
   }
   function choose(key: keyof Answers, value: string) {
+    if (enTransition.current) return;
     setAnswers((a) => ({ ...a, [key]: value }));
     next();
   }
