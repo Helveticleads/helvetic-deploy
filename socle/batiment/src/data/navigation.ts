@@ -1,33 +1,46 @@
 /*
  * SOCLE BATIMENT : les entrees du menu.
  *
- * Le gabarit n'ecrit AUCUN menu en dur. Il declare l'ordre commun des sections,
- * puis il DEMANDE AU SITE lesquelles existent : `pagesForRoute` est le routeur
- * du site, et il rend `[NotFound]` pour un chemin qu'il ne connait pas. Une
- * section sans route disparait donc du menu toute seule, sans qu'on touche au
- * gabarit.
+ * Le gabarit n'ecrit AUCUN menu en dur. Il declare SIX EMPLACEMENTS communs,
+ * puis il DEMANDE AU SITE lesquels existent : `pagesForRoute` est le routeur du
+ * site, et il rend `[NotFound]` pour un chemin qu'il ne connait pas. Un
+ * emplacement sans route disparait donc tout seul.
+ *
+ * SIX AU PLUS DANS LA BARRE. Decision de Frederic du 02.11.2026 : l'en-tete ne
+ * garde que les sections communes du parc. Mesure du meme jour sur un menu de
+ * neuf entrees : a 1024 px, la navigation recouvre le logo. Ce qui n'entre pas
+ * dans la barre n'est pas perdu pour autant, il reste dans le menu du
+ * telephone, par `NAV_TELEPHONE`, et dans le pied de page du site.
  *
  * Verifie par la garde de conformite (ops/garde-socle) : ce fichier doit etre
- * identique a la reference, zones libres mises a part.
+ * identique a la reference, zones libres mises a part. La limite de six est
+ * donc tenue par l'empreinte, et non par la bonne volonte de chaque site.
  */
 import { NotFound, pagesForRoute } from "@/routes";
 
 export type EntreeMenu = { libelle: string; href: string };
 
 /*
- * L'ORDRE est commun a tous les sites du batiment. Les LIBELLES sont ceux qui
- * sont deja servis par les sites du lot 1 : rien n'est invente ici, la charte
- * editoriale ne fixe aucune voix pour le batiment (CHARTE v3.2, par. 3).
+ * La zone libre porte DEUX choses, et rien d'autre :
+ *
+ *   LIBELLES : les sept mots de la langue du site. Les CLES ne changent pas,
+ *              le reste du fichier les lit. Un site allemand traduit les
+ *              valeurs, jamais les cles.
+ *   EN_PLUS  : les sections propres au site, qui ne sont PAS dans la barre
+ *              mais paraissent dans le menu du telephone. Vide par defaut.
  */
-/* socle:libre:debut libelles de langue, a traduire pour un site DE */
-const SECTIONS: EntreeMenu[] = [
-  { libelle: "Services", href: "/services" },
-  { libelle: "Villes", href: "/villes" },
-  { libelle: "Tarifs", href: "/tarifs" },
-  { libelle: "Blog", href: "/blog" },
-  { libelle: "FAQ", href: "/faq" },
-  { libelle: "Contact", href: "/contact" },
-];
+/* socle:libre:debut libelles de langue, et sections propres au site */
+const LIBELLES = {
+  services: "Services",
+  villes: "Villes",
+  tarifs: "Tarifs",
+  journal: "Blog",
+  conseils: "Conseils",
+  faq: "FAQ",
+  contact: "Contact",
+};
+
+const EN_PLUS: EntreeMenu[] = [];
 /* socle:libre:fin */
 
 /** Une section existe si le routeur du site rend autre chose que la page 404. */
@@ -37,4 +50,45 @@ function routeExiste(href: string): boolean {
   return pages[0] !== NotFound;
 }
 
-export const NAV: EntreeMenu[] = SECTIONS.filter((s) => routeExiste(s.href));
+/*
+ * Le quatrieme emplacement est tenu par le journal du site, qu'il s'appelle
+ * `/blog` ou `/conseils`. Un site qui sert les deux n'en montre qu'un dans la
+ * barre : l'autre descend dans le menu du telephone, comme le reste.
+ */
+const EMPLACEMENTS: EntreeMenu[][] = [
+  [{ libelle: LIBELLES.services, href: "/services" }],
+  [{ libelle: LIBELLES.villes, href: "/villes" }],
+  [{ libelle: LIBELLES.tarifs, href: "/tarifs" }],
+  [
+    { libelle: LIBELLES.journal, href: "/blog" },
+    { libelle: LIBELLES.conseils, href: "/conseils" },
+  ],
+  [{ libelle: LIBELLES.faq, href: "/faq" }],
+  [{ libelle: LIBELLES.contact, href: "/contact" }],
+];
+
+/** Le premier candidat d'un emplacement que le site sert vraiment. */
+function tenuPar(candidats: EntreeMenu[]): EntreeMenu | null {
+  return candidats.find((c) => routeExiste(c.href)) ?? null;
+}
+
+/** La barre : six entrees au plus, et c'est une limite dure. */
+export const NAV: EntreeMenu[] = EMPLACEMENTS.map(tenuPar).filter(
+  (e): e is EntreeMenu => e !== null,
+);
+
+if (NAV.length > EMPLACEMENTS.length) {
+  throw new Error(
+    `socle: l'en-tete n'accepte que ${EMPLACEMENTS.length} entrees, ${NAV.length} trouvees`,
+  );
+}
+
+/*
+ * Le menu du telephone : la barre, puis ce que le site a en propre. C'est ce
+ * qui garantit qu'aucune page ne perd son lien entrant quand elle quitte la
+ * barre, puisque le panneau est rendu dans le HTML de chaque page.
+ */
+export const NAV_TELEPHONE: EntreeMenu[] = [
+  ...NAV,
+  ...EN_PLUS.filter((e) => routeExiste(e.href) && !NAV.some((n) => n.href === e.href)),
+];

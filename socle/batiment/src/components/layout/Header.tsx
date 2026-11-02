@@ -50,7 +50,7 @@ import { Link, useLocation } from "wouter";
 import { Menu, Phone, X } from "lucide-react";
 import { Logo } from "@/components/Logo";
 import { CanalWhatsapp } from "@/components/socle/CanalWhatsapp";
-import { NAV } from "@/data/navigation";
+import { NAV, NAV_TELEPHONE } from "@/data/navigation";
 import { SITE_CONFIG, phoneHref, phoneMention } from "@/data/config";
 import { cn } from "@/lib/utils";
 
@@ -88,16 +88,6 @@ export function Header() {
   const courant = normaliserChemin(emplacement);
   const tel = phoneHref();
   const mention = phoneMention();
-  /*
-   * Le seuil d'apparition du menu depend du NOMBRE d'entrees, pas d'un choix.
-   * REGLES-ENTETE-CIBLE a mesure `lg` sur un menu de six entrees. Mesure du
-   * 02.11 sur un menu de neuf : a 1024, la navigation recouvre le logo. Les
-   * sites qui ont davantage d'entrees montrent donc leur menu a partir de
-   * `xl`, et gardent le bouton de menu en dessous. Aucune plage de largeur
-   * n'est sans appel pour autant : le bouton « Appeler » vit lui aussi sous
-   * `xl`.
-   */
-  const menuLong = NAV.length > 6;
 
   /** Changer de page referme le panneau : il survivait a sa propre navigation. */
   useEffect(() => setOuvert(false), [emplacement]);
@@ -131,7 +121,7 @@ export function Header() {
         </Link>
 
         <nav
-          className={cn("hidden items-center gap-6", menuLong ? "xl:flex" : "lg:flex")}
+          className="hidden items-center gap-6 lg:flex"
           aria-label="Navigation principale"
         >
           {NAV.map((item) => (
@@ -167,7 +157,7 @@ export function Header() {
 
           <CanalWhatsapp variante="icone" className={cn(
               "hidden h-10 w-10 items-center justify-center rounded-xl bg-[#25D366] text-white transition-colors hover:bg-[#1ebe57]",
-              menuLong ? "xl:inline-flex" : "lg:inline-flex",
+              "lg:inline-flex",
             )} />
 
           {/* Sous `xl`, l'appel garde un bouton : aucune plage de largeur sans appel. */}
@@ -182,7 +172,7 @@ export function Header() {
 
           <Link
             href="/contact"
-            className={cn(BOUTON_DEVIS, BOUTON_DEVIS_MD, "hidden", menuLong ? "xl:inline-flex" : "lg:inline-flex")}
+            className={cn(BOUTON_DEVIS, BOUTON_DEVIS_MD, "hidden lg:inline-flex")}
           >
             Devis gratuit
           </Link>
@@ -191,7 +181,7 @@ export function Header() {
             type="button"
             className={cn(
               "inline-flex h-10 w-10 items-center justify-center rounded-lg hover:bg-muted",
-              menuLong ? "xl:hidden" : "lg:hidden",
+              "lg:hidden",
             )}
             aria-label={ouvert ? "Fermer le menu" : "Ouvrir le menu"}
             aria-expanded={ouvert}
@@ -203,46 +193,52 @@ export function Header() {
         </div>
       </div>
 
-      {ouvert ? (
-        <div
-          id="menu-site"
-          className={cn("border-t border-border bg-card", menuLong ? "xl:hidden" : "lg:hidden")}
-        >
-          <nav className="container flex flex-col py-3" aria-label="Navigation repliee">
-            {tel ? (
-              <p className="pb-3 text-sm">
-                <a href={tel} className="font-semibold hover:underline">
-                  {SITE_CONFIG.phone}
-                </a>
-                {mention ? (
-                  <>
-                    <br />
-                    <span className="text-muted-foreground">{mention}</span>
-                  </>
-                ) : null}
-              </p>
-            ) : null}
+      {/*
+        * Le panneau est TOUJOURS rendu, et seulement masque quand il est
+        * ferme. C'est ce qui garde dans le HTML de chaque page les liens des
+        * sections qui ne sont pas dans la barre : sans cela, les pages qui ont
+        * quitte la barre le 02.11 perdaient leur lien entrant sur tout le
+        * site. Masque, il n'occupe aucune place.
+        */}
+      <div
+        id="menu-site"
+        hidden={!ouvert}
+        className="border-t border-border bg-card lg:hidden"
+      >
+        <nav className="container flex flex-col py-3" aria-label="Navigation repliee">
+          {tel ? (
+            <p className="pb-3 text-sm">
+              <a href={tel} className="font-semibold hover:underline">
+                {SITE_CONFIG.phone}
+              </a>
+              {mention ? (
+                <>
+                  <br />
+                  <span className="text-muted-foreground">{mention}</span>
+                </>
+              ) : null}
+            </p>
+          ) : null}
 
-            {NAV.map((item) => (
-              <Link
-                key={item.href}
-                href={item.href}
-                onClick={() => setOuvert(false)}
-                aria-current={marqueExact(item.href) ? "page" : undefined}
-                className="border-b border-border/60 py-3 text-base font-medium last:border-0 aria-[current=page]:text-accent"
-              >
-                {item.libelle}
-              </Link>
-            ))}
-
-            <CanalWhatsapp variante="plein" libelle="Ecrire sur WhatsApp" className="mt-4 flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-[#128C7E] text-base font-semibold text-white" />
-
-            <Link href="/contact" className={cn(BOUTON_DEVIS, BOUTON_DEVIS_LG, "mt-4 w-full")}>
-              Demander un devis gratuit
+          {NAV_TELEPHONE.map((item) => (
+            <Link
+              key={item.href}
+              href={item.href}
+              onClick={() => setOuvert(false)}
+              aria-current={marqueExact(item.href) ? "page" : undefined}
+              className="border-b border-border/60 py-3 text-base font-medium last:border-0 aria-[current=page]:text-accent"
+            >
+              {item.libelle}
             </Link>
-          </nav>
-        </div>
-      ) : null}
+          ))}
+
+          <CanalWhatsapp variante="plein" libelle="Ecrire sur WhatsApp" className="mt-4 flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-[#128C7E] text-base font-semibold text-white" />
+
+          <Link href="/contact" className={cn(BOUTON_DEVIS, BOUTON_DEVIS_LG, "mt-4 w-full")}>
+            Demander un devis gratuit
+          </Link>
+        </nav>
+      </div>
     </header>
   );
 }

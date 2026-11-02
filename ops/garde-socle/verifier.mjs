@@ -246,6 +246,33 @@ function mesuresEffet(site, defauts) {
   }
 
   /*
+   * 1 bis. La barre ne porte pas plus de SIX entrees.
+   *
+   * Decision de Frederic du 02.11 : l'en-tete ne garde que les sections
+   * communes du parc. La limite est tenue d'abord par la FORME du gabarit,
+   * qui declare six emplacements et rien de plus, et donc par l'empreinte de
+   * `src/data/navigation.ts`. Cette mesure est la seconde serrure : elle
+   * compte les chemins declares HORS zones libres, c'est a dire dans la
+   * partie commune, et refuse qu'on en ajoute un septieme emplacement. Les
+   * sections propres au site vivent dans la zone libre, pour le menu du
+   * telephone, et ne comptent pas ici.
+   */
+  const fNav = path.join(site, "src/data/navigation.ts");
+  if (!fs.existsSync(fNav)) {
+    defauts.push("effet:src/data/navigation.ts absent");
+  } else {
+    const commun = normaliser(lire(fNav));
+    const chemins = [...commun.matchAll(/href:\s*"([^"]+)"/g)].map((m) => m[1]);
+    const EMPLACEMENTS_MAX = 6;
+    const CANDIDATS_MAX = EMPLACEMENTS_MAX + 1; /* le journal : /blog ou /conseils */
+    if (chemins.length > CANDIDATS_MAX) {
+      defauts.push(
+        `effet:la barre declare ${chemins.length} chemins dans sa partie commune, ${CANDIDATS_MAX} au plus : ${chemins.join(", ")}`,
+      );
+    }
+  }
+
+  /*
    * 4 bis. Et ils verifient le nom AVANT d'envoyer.
    *
    * `normalizeLegacyLeadBody` exige 2 caracteres : sans cette garde, la charge
