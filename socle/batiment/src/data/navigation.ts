@@ -17,6 +17,7 @@
  * donc tenue par l'empreinte, et non par la bonne volonte de chaque site.
  */
 import { NotFound, pagesForRoute } from "@/routes";
+import { SITE_CONFIG } from "@/data/config";
 
 export type EntreeMenu = { libelle: string; href: string };
 
@@ -43,6 +44,60 @@ const LIBELLES = {
 const EN_PLUS: EntreeMenu[] = [];
 /* socle:libre:fin */
 
+/*
+ * La langue et les chemins viennent de la configuration du site. Un site
+ * francais ne declare rien : les valeurs ci-dessous sont les siennes. Un site
+ * allemand declare `langue: "de"` et `chemins`, parce que ses routes s'appellent
+ * /leistungen ou /kontakt : sans cela, sa barre resterait presque vide.
+ */
+type CleChemin = keyof typeof LIBELLES;
+const SITE = SITE_CONFIG as typeof SITE_CONFIG & {
+  langue?: "fr" | "de";
+  chemins?: Partial<Record<CleChemin, string>>;
+};
+
+const CHEMINS: Record<CleChemin, string> = Object.assign(
+  {
+    services: "/services",
+    villes: "/villes",
+    tarifs: "/tarifs",
+    journal: "/blog",
+    conseils: "/conseils",
+    faq: "/faq",
+    contact: "/contact",
+  },
+  SITE.chemins,
+);
+
+/** Le bouton de devis de l'en-tete et de la barre du bas. */
+export const CHEMIN_CONTACT = CHEMINS.contact;
+
+/** Les textes des gabarits, par langue. Le site n'en ecrit aucun. */
+export const TEXTES = {
+  fr: {
+    accueil: "Accueil",
+    navigation: "Navigation principale",
+    navigationRepliee: "Navigation repliee",
+    appeler: "Appeler",
+    devis: "Devis gratuit",
+    devisLong: "Demander un devis gratuit",
+    fermerMenu: "Fermer le menu",
+    ouvrirMenu: "Ouvrir le menu",
+    whatsapp: "Ecrire sur WhatsApp",
+  },
+  de: {
+    accueil: "Startseite",
+    navigation: "Hauptnavigation",
+    navigationRepliee: "Mobile Navigation",
+    appeler: "Anrufen",
+    devis: "Offerte anfragen",
+    devisLong: "Kostenloses Angebot anfragen",
+    fermerMenu: "Menü schliessen",
+    ouvrirMenu: "Menü öffnen",
+    whatsapp: "Auf WhatsApp schreiben",
+  },
+}[SITE.langue ?? "fr"];
+
 /** Une section existe si le routeur du site rend autre chose que la page 404. */
 function routeExiste(href: string): boolean {
   const pages = pagesForRoute(href);
@@ -56,15 +111,15 @@ function routeExiste(href: string): boolean {
  * barre : l'autre descend dans le menu du telephone, comme le reste.
  */
 const EMPLACEMENTS: EntreeMenu[][] = [
-  [{ libelle: LIBELLES.services, href: "/services" }],
-  [{ libelle: LIBELLES.villes, href: "/villes" }],
-  [{ libelle: LIBELLES.tarifs, href: "/tarifs" }],
+  [{ libelle: LIBELLES.services, href: CHEMINS.services }],
+  [{ libelle: LIBELLES.villes, href: CHEMINS.villes }],
+  [{ libelle: LIBELLES.tarifs, href: CHEMINS.tarifs }],
   [
-    { libelle: LIBELLES.journal, href: "/blog" },
-    { libelle: LIBELLES.conseils, href: "/conseils" },
+    { libelle: LIBELLES.journal, href: CHEMINS.journal },
+    { libelle: LIBELLES.conseils, href: CHEMINS.conseils },
   ],
-  [{ libelle: LIBELLES.faq, href: "/faq" }],
-  [{ libelle: LIBELLES.contact, href: "/contact" }],
+  [{ libelle: LIBELLES.faq, href: CHEMINS.faq }],
+  [{ libelle: LIBELLES.contact, href: CHEMINS.contact }],
 ];
 
 /** Le premier candidat d'un emplacement que le site sert vraiment. */

@@ -50,7 +50,7 @@ import { Link, useLocation } from "wouter";
 import { Menu, Phone, X } from "lucide-react";
 import { Logo } from "@/components/Logo";
 import { CanalWhatsapp } from "@/components/socle/CanalWhatsapp";
-import { NAV, NAV_TELEPHONE } from "@/data/navigation";
+import { CHEMIN_CONTACT, NAV, NAV_TELEPHONE, TEXTES } from "@/data/navigation";
 import { SITE_CONFIG, phoneHref, phoneMention } from "@/data/config";
 import { cn } from "@/lib/utils";
 
@@ -115,14 +115,14 @@ export function Header() {
         <Link
           href="/"
           className="flex min-w-0 items-center"
-          aria-label={`Accueil ${SITE_CONFIG.name}`}
+          aria-label={`${TEXTES.accueil} ${SITE_CONFIG.name}`}
         >
           <Logo />
         </Link>
 
         <nav
           className="hidden items-center gap-6 lg:flex"
-          aria-label="Navigation principale"
+          aria-label={TEXTES.navigation}
         >
           {NAV.map((item) => (
             <Link
@@ -166,15 +166,15 @@ export function Header() {
               href={tel}
               className="inline-flex items-center gap-2 rounded-xl border border-border px-3 py-2 text-sm font-semibold xl:hidden"
             >
-              <Phone className="h-4 w-4" aria-hidden="true" /> Appeler
+              <Phone className="h-4 w-4" aria-hidden="true" /> {TEXTES.appeler}
             </a>
           ) : null}
 
           <Link
-            href="/contact"
+            href={CHEMIN_CONTACT}
             className={cn(BOUTON_DEVIS, BOUTON_DEVIS_MD, "hidden lg:inline-flex")}
           >
-            Devis gratuit
+            {TEXTES.devis}
           </Link>
 
           <button
@@ -183,7 +183,7 @@ export function Header() {
               "inline-flex h-10 w-10 items-center justify-center rounded-lg hover:bg-muted",
               "lg:hidden",
             )}
-            aria-label={ouvert ? "Fermer le menu" : "Ouvrir le menu"}
+            aria-label={ouvert ? TEXTES.fermerMenu : TEXTES.ouvrirMenu}
             aria-expanded={ouvert}
             aria-controls="menu-site"
             onClick={() => setOuvert((v) => !v)}
@@ -205,7 +205,7 @@ export function Header() {
         hidden={!ouvert}
         className="border-t border-border bg-card lg:hidden"
       >
-        <nav className="container flex flex-col py-3" aria-label="Navigation repliee">
+        <nav className="container flex flex-col py-3" aria-label={TEXTES.navigationRepliee}>
           {tel ? (
             <p className="pb-3 text-sm">
               <a href={tel} className="font-semibold hover:underline">
@@ -232,10 +232,10 @@ export function Header() {
             </Link>
           ))}
 
-          <CanalWhatsapp variante="plein" libelle="Ecrire sur WhatsApp" className="mt-4 flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-[#128C7E] text-base font-semibold text-white" />
+          <CanalWhatsapp variante="plein" libelle={TEXTES.whatsapp} className="mt-4 flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-[#128C7E] text-base font-semibold text-white" />
 
-          <Link href="/contact" className={cn(BOUTON_DEVIS, BOUTON_DEVIS_LG, "mt-4 w-full")}>
-            Demander un devis gratuit
+          <Link href={CHEMIN_CONTACT} className={cn(BOUTON_DEVIS, BOUTON_DEVIS_LG, "mt-4 w-full")}>
+            {TEXTES.devisLong}
           </Link>
         </nav>
       </div>

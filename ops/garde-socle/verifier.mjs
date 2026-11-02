@@ -262,7 +262,7 @@ function mesuresEffet(site, defauts) {
     defauts.push("effet:src/data/navigation.ts absent");
   } else {
     const commun = normaliser(lire(fNav));
-    const chemins = [...commun.matchAll(/href:\s*"([^"]+)"/g)].map((m) => m[1]);
+    const chemins = [...commun.matchAll(/href:\s*(?:"([^"]+)"|CHEMINS\.(\w+))/g)].map((m) => m[1] ?? m[2]);
     const EMPLACEMENTS_MAX = 6;
     const CANDIDATS_MAX = EMPLACEMENTS_MAX + 1; /* le journal : /blog ou /conseils */
     if (chemins.length > CANDIDATS_MAX) {

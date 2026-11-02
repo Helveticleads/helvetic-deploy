@@ -6,12 +6,12 @@
     {
       "source": "src/components/layout/Header.tsx",
       "chemin": "src/components/layout/Header.tsx",
-      "empreinte": "1ad2bb58bad238c5961f43ce94b68c0b6ff17608bfb3a42982d8d7db4cc04bab"
+      "empreinte": "e9d57704dc12ce92d223c0598b782539378a1bc1db6818d6715eba5b5bec2506"
     },
     {
       "source": "src/components/layout/StickyMobileCTA.tsx",
       "chemin": "src/components/layout/StickyMobileCTA.tsx",
-      "empreinte": "e088d76e7ccdd66055d45868f39c5408e73b022c1867821555e2f4a108f3194e"
+      "empreinte": "032390856a613d454d0ef200bf63ef04c72ea8dbdc7642f86bd6c0b2caa602c4"
     },
     {
       "source": "src/components/socle/CanalWhatsapp.tsx",
@@ -32,7 +32,7 @@
     {
       "source": "src/data/navigation.ts",
       "chemin": "src/data/navigation.ts",
-      "empreinte": "e525e28acc6c4d79d4a2c28fab58494619a04d333cf791aa9bb4cd27f407e063"
+      "empreinte": "7917ddf95af2231eb6018151102878e93426cf5cabd12a64c8664b0f2fb6fe85"
     },
     {
       "source": "src/lib/api.ts",
@@ -52,7 +52,7 @@
     {
       "source": "../../ops/garde-socle/verifier.mjs",
       "chemin": "scripts/garde-socle.mjs",
-      "empreinte": "467d7b9169c4d7eda421304ae819c7553342070f328d353c9988cebee5684a6c"
+      "empreinte": "8605656420259796a6113337ffff92d23430b154fd3d01a268074e43c120d85f"
     }
   ]
 }

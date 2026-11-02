@@ -204,5 +204,10 @@ rien de ce qui est ecrit ici n'atteint un seul site.
 - **Le seuil `xl` du numero.** Il est pose a 1280 px par le gabarit. Les
   captures du lot 1 le montrent tenir a 1280 et a 1024 ; il n'a pas ete mesure
   sur un site dont le menu serait plus long.
-- **Les libelles DE du menu.** La zone libre existe, aucun site DE ne l'a
-  encore remplie.
+- **Les sites allemands.** Leur `SITE_CONFIG` declare `langue: "de"` et `chemins`
+  (`{ services: "/leistungen", contact: "/kontakt", ... }`). La barre et les
+  boutons lisent ces chemins, et les textes des gabarits sortent de `TEXTES` dans
+  `src/data/navigation.ts`. Un site francais ne declare rien : ses valeurs sont les
+  valeurs par defaut, et son rendu ne change pas. Les libelles du menu restent
+  dans la zone libre. Bouton allemand : « Offerte anfragen », « Kostenloses
+  Angebot anfragen », deux libelles deja servis par le parc.

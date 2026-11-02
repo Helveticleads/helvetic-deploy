@@ -13,6 +13,7 @@ import { Link } from "wouter";
 import { FileText, Phone } from "lucide-react";
 import { CanalWhatsapp } from "@/components/socle/CanalWhatsapp";
 import { SITE_CONFIG, phoneHref } from "@/data/config";
+import { CHEMIN_CONTACT, TEXTES } from "@/data/navigation";
 
 export function StickyMobileCTA() {
   const tel = phoneHref();
@@ -25,7 +26,7 @@ export function StickyMobileCTA() {
             href={tel}
             className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl border border-border py-3 text-sm font-semibold"
           >
-            <Phone className="h-4 w-4" aria-hidden="true" /> Appeler
+            <Phone className="h-4 w-4" aria-hidden="true" /> {TEXTES.appeler}
           </a>
         ) : null}
         <CanalWhatsapp
@@ -33,10 +34,10 @@ export function StickyMobileCTA() {
           className="inline-flex h-[2.9rem] w-[2.9rem] shrink-0 items-center justify-center rounded-xl bg-[#25D366] text-white"
         />
         <Link
-          href="/contact"
+          href={CHEMIN_CONTACT}
           className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl bg-accent py-3 text-sm font-semibold text-accent-foreground"
         >
-          <FileText className="h-4 w-4" aria-hidden="true" /> Devis gratuit
+          <FileText className="h-4 w-4" aria-hidden="true" /> {TEXTES.devis}
         </Link>
       </div>
       <span className="sr-only">{SITE_CONFIG.responseText}</span>
