@@ -128,6 +128,26 @@ le socle ne possede pas. La garde les verifie ensuite par ses mesures d'effet.
 Un socle modifie sans recopie rend les sites ROUGES au prochain build : c'est
 voulu. La garde dit quel fichier et quelle ligne.
 
+### 2.2 bis Reposer le socle sur un site qui a rempli ses zones libres
+
+`poser.mjs` GREFFE les zones libres du site dans le gabarit qu'il pose : ce
+qu'un site a ecrit dans ses zones lui reste, meme apres une modification du
+socle. Il le dit a chaque fichier concerne :
+
+```
+  pose src/components/HeroForm.tsx (3 zone(s) libre(s) du site gardee(s))
+```
+
+Sans cette greffe, reposer le socle ecraserait en silence le choix de commune
+d'un site, ses cles d'etapes et ses verifications propres, et le build
+resterait VERT : la garde retire justement ces zones avant de comparer. Le cas
+s'est produit une fois, sur terrassement, le 02.11.
+
+Quand le gabarit gagne ou perd une zone libre, le compte ne correspond plus.
+`poser.mjs` n'ecrit alors PAS le fichier, le nomme, et sort en erreur : il n'y
+a aucune facon sure de deviner quelle zone du site va dans quelle zone du
+gabarit. Le report se fait a la main, une fois, puis la greffe reprend.
+
 ### 2.3 Les zones libres
 
 Un fichier du socle peut contenir des zones que chaque site a le droit de
