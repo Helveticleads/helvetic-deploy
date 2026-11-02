@@ -282,7 +282,7 @@ function mesuresEffet(site, defauts) {
    * code, et il se retire d'une ligne dans la page.
    */
   const verifieLeNom = (texte) =>
-    /\.(nom|name)\.trim\(\)\.length\s*<\s*2/.test(texte) ||
+    /\b\w*(nom|name)\w*\.trim\(\)\.length\s*<\s*2/i.test(texte) ||
     /\b(nom|name)\s*:\s*z\.string\(\)[^\n]*\.min\(\s*2/.test(texte);
   const sansNom = sources
     .filter((p) => /construireCharge\s*\(/.test(lire(p)))

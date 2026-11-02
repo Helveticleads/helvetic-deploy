@@ -23,8 +23,11 @@ a `ops/garde-socle/verifier.mjs`, qui tourne dans le build de chaque site.
 | La barre est collante (`sticky top-0`) et marque la page servie par `aria-current="page"` | garde socle, empreinte |
 | Le logo CEDE en largeur : `min-w-0`, jamais `shrink-0` | garde socle, empreinte |
 | Les entrees du menu viennent des ROUTES du site, jamais ecrites en dur dans le gabarit | garde socle, empreinte de `src/data/navigation.ts` |
+| La barre ne porte que les SIX sections communes : Services, Villes, Tarifs, le journal (Blog ou Conseils), FAQ, Contact | forme du gabarit, et garde socle, mesure d'effet |
+| Ce qui n'est pas dans la barre reste dans le menu du telephone (`NAV_TELEPHONE`) et dans le pied | forme du gabarit |
+| Le panneau replie est TOUJOURS rendu, seulement masque : aucune page ne perd son lien entrant | garde socle, empreinte |
 | Le numero et sa mention sont deux elements EMPILES, visibles a partir de `xl` | garde socle, empreinte |
-| Le menu parait a partir de `lg`, ou de `xl` au dela de six entrees | garde socle, empreinte |
+| Le menu parait a partir de `lg` | garde socle, empreinte |
 | Un bouton « Appeler » sous `xl` : aucune plage de largeur sans appel | garde socle, empreinte |
 | Un bouton de devis, toujours present | garde socle, empreinte |
 | Le panneau replie se referme a la navigation et sur Echap | garde socle, empreinte |
