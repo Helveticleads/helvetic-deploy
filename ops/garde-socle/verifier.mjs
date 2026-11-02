@@ -123,15 +123,44 @@ function premiereLigneDifferente(attendu, obtenu) {
 const FAUX_NUMERO = "079 123 45 67";
 
 function mesuresEffet(site, defauts) {
-  /* 1. Chaque gabarit de page passe par Layout, la 404 comprise. */
+  /*
+   * 1. UN en-tete, et un seul, atteint chaque route, la page introuvable
+   *    comprise.
+   *
+   * Deux charpentes existent dans le parc, et les deux sont bonnes : soit
+   * chaque gabarit de page passe par `Layout`, soit la coquille de
+   * l'application en monte un au dessus du routeur. Exiger la premiere seule
+   * serait une garde PAR NOM : ce qui compte est l'effet, pas l'endroit ou le
+   * composant est ecrit. Ce qui n'est jamais bon, c'est DEUX en-tetes sur la
+   * meme page.
+   */
   const pages = listerFichiers(path.join(site, "src/pages"), (n) => n.endsWith(".tsx"));
-  const sansLayout = pages.filter((p) => !/<Layout[\s>]/.test(lire(p))).map((p) => path.basename(p));
+  const coquille = ["src/App.tsx", "src/main.tsx", "src/entry-server.tsx"]
+    .map((f) => path.join(site, f))
+    .filter((f) => fs.existsSync(f))
+    .map((f) => lire(f))
+    .join("\n");
+  const chromeGlobale = /<Layout[\s>]/.test(coquille) || /<Header[\s>]/.test(coquille);
   if (pages.length === 0) {
     defauts.push("effet:aucun gabarit de page trouve sous src/pages");
-  } else if (sansLayout.length > 0) {
-    defauts.push(
-      `effet:gabarits de page sans Layout, donc sans en-tete ni pied : ${sansLayout.join(", ")}`,
-    );
+  } else if (chromeGlobale) {
+    const enDouble = pages
+      .filter((p) => /<Layout[\s>]|<Header[\s>]/.test(lire(p)))
+      .map((p) => path.basename(p));
+    if (enDouble.length > 0) {
+      defauts.push(
+        `effet:la coquille de l'application monte deja un en-tete, et ces gabarits en montent un second : ${enDouble.join(", ")}`,
+      );
+    }
+  } else {
+    const sansLayout = pages
+      .filter((p) => !/<Layout[\s>]/.test(lire(p)))
+      .map((p) => path.basename(p));
+    if (sansLayout.length > 0) {
+      defauts.push(
+        `effet:gabarits de page sans Layout, donc sans en-tete ni pied : ${sansLayout.join(", ")}`,
+      );
+    }
   }
 
   /* 2. Le numero : vide, ou format suisse. Jamais le faux numero. */
@@ -225,13 +254,36 @@ function mesuresEffet(site, defauts) {
    * `required` du champ : `required` ne couvre pas un envoi declenche par le
    * code, et il se retire d'une ligne dans la page.
    */
+  const verifieLeNom = (texte) =>
+    /\.(nom|name)\.trim\(\)\.length\s*<\s*2/.test(texte) ||
+    /\b(nom|name)\s*:\s*z\.string\(\)[^\n]*\.min\(\s*2/.test(texte);
   const sansNom = sources
     .filter((p) => /construireCharge\s*\(/.test(lire(p)))
-    .filter((p) => !/\.nom\.trim\(\)\.length\s*<\s*2/.test(lire(p)))
+    .filter((p) => !verifieLeNom(lire(p)))
     .map((p) => path.relative(site, p));
   if (sansNom.length > 0) {
     defauts.push(
       `effet:formulaires qui envoient un lead sans verifier le nom : ${sansNom.join(", ")}`,
+    );
+  }
+
+  /*
+   * 4 ter. Personne n'envoie un lead en contournant le contrat.
+   *
+   * `submitLead` prend une charge construite par `construireCharge` : c'est la
+   * que le consentement, le piege et la langue entrent dans la charge. Un
+   * formulaire qui appelle `submitLead` avec un objet ecrit a la main envoie
+   * une charge de l'ancien contrat, sans rien de tout cela, et le build reste
+   * vert : rien d'autre ne le verrait, puisque les mesures ci-dessus ne
+   * regardent que les fichiers qui appellent deja `construireCharge`.
+   */
+  const sansContrat = sources
+    .filter((p) => /\bsubmitLead\s*\(/.test(lire(p)))
+    .filter((p) => !/construireCharge\s*\(/.test(lire(p)))
+    .map((p) => path.relative(site, p));
+  if (sansContrat.length > 0) {
+    defauts.push(
+      `effet:formulaires qui appellent submitLead sans passer par construireCharge : ${sansContrat.join(", ")}`,
     );
   }
 

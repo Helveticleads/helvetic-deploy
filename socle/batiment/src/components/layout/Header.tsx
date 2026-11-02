@@ -88,6 +88,16 @@ export function Header() {
   const courant = normaliserChemin(emplacement);
   const tel = phoneHref();
   const mention = phoneMention();
+  /*
+   * Le seuil d'apparition du menu depend du NOMBRE d'entrees, pas d'un choix.
+   * REGLES-ENTETE-CIBLE a mesure `lg` sur un menu de six entrees. Mesure du
+   * 02.11 sur un menu de neuf : a 1024, la navigation recouvre le logo. Les
+   * sites qui ont davantage d'entrees montrent donc leur menu a partir de
+   * `xl`, et gardent le bouton de menu en dessous. Aucune plage de largeur
+   * n'est sans appel pour autant : le bouton « Appeler » vit lui aussi sous
+   * `xl`.
+   */
+  const menuLong = NAV.length > 6;
 
   /** Changer de page referme le panneau : il survivait a sa propre navigation. */
   useEffect(() => setOuvert(false), [emplacement]);
@@ -120,7 +130,10 @@ export function Header() {
           <Logo />
         </Link>
 
-        <nav className="hidden items-center gap-6 lg:flex" aria-label="Navigation principale">
+        <nav
+          className={cn("hidden items-center gap-6", menuLong ? "xl:flex" : "lg:flex")}
+          aria-label="Navigation principale"
+        >
           {NAV.map((item) => (
             <Link
               key={item.href}
@@ -152,7 +165,10 @@ export function Header() {
             </div>
           ) : null}
 
-          <CanalWhatsapp variante="icone" className="hidden lg:inline-flex h-10 w-10 items-center justify-center rounded-xl bg-[#25D366] text-white transition-colors hover:bg-[#1ebe57]" />
+          <CanalWhatsapp variante="icone" className={cn(
+              "hidden h-10 w-10 items-center justify-center rounded-xl bg-[#25D366] text-white transition-colors hover:bg-[#1ebe57]",
+              menuLong ? "xl:inline-flex" : "lg:inline-flex",
+            )} />
 
           {/* Sous `xl`, l'appel garde un bouton : aucune plage de largeur sans appel. */}
           {tel ? (
@@ -166,14 +182,17 @@ export function Header() {
 
           <Link
             href="/contact"
-            className={cn(BOUTON_DEVIS, BOUTON_DEVIS_MD, "hidden lg:inline-flex")}
+            className={cn(BOUTON_DEVIS, BOUTON_DEVIS_MD, "hidden", menuLong ? "xl:inline-flex" : "lg:inline-flex")}
           >
             Devis gratuit
           </Link>
 
           <button
             type="button"
-            className="inline-flex h-10 w-10 items-center justify-center rounded-lg hover:bg-muted lg:hidden"
+            className={cn(
+              "inline-flex h-10 w-10 items-center justify-center rounded-lg hover:bg-muted",
+              menuLong ? "xl:hidden" : "lg:hidden",
+            )}
             aria-label={ouvert ? "Fermer le menu" : "Ouvrir le menu"}
             aria-expanded={ouvert}
             aria-controls="menu-site"
@@ -185,7 +204,10 @@ export function Header() {
       </div>
 
       {ouvert ? (
-        <div id="menu-site" className="border-t border-border bg-card lg:hidden">
+        <div
+          id="menu-site"
+          className={cn("border-t border-border bg-card", menuLong ? "xl:hidden" : "lg:hidden")}
+        >
           <nav className="container flex flex-col py-3" aria-label="Navigation repliee">
             {tel ? (
               <p className="pb-3 text-sm">

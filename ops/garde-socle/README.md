@@ -20,18 +20,22 @@ justement « gabarit recopie avec garde de conformite » : ce qui est garde,
 c'est que la copie n'a pas derive.
 
 **L'effet.** Comparer du texte ne prouve pas qu'un site se comporte bien. La
-garde pose donc sept questions qui ne dependent d'aucune reference :
+garde pose donc huit questions qui ne dependent d'aucune reference :
 
-1. chaque gabarit de page passe par `Layout`, la page introuvable comprise ;
+1. un en-tete, et un seul, atteint chaque route : soit chaque gabarit passe
+   par `Layout`, soit la coquille de l'application en monte un au dessus du
+   routeur, et alors aucun gabarit n'en monte un second ;
 2. le numero du site est vide ou au format suisse, et le faux numero de
    demonstration n'existe nulle part ;
 3. `consent: true` n'est pas ecrit en dur, et le champ piege part dans la charge ;
 4. tout fichier qui construit une charge de lead monte le bloc de consentement ;
 5. et il verifie le nom avant d'envoyer : sans 2 caracteres, /api/leads
    repond 400 et le lead est perdu ;
-6. la politique de securite du contenu est en rapport seul et porte les deux
+6. personne n'appelle `submitLead` sans passer par `construireCharge` : un
+   formulaire qui ecrit sa charge a la main contournerait tout le contrat ;
+7. la politique de securite du contenu est en rapport seul et porte les deux
    origines du widget ;
-7. le prerendu rend la page introuvable au lieu de recopier la coquille.
+8. le prerendu rend la page introuvable au lieu de recopier la coquille.
 
 ## Les deux niveaux
 

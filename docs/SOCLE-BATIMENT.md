@@ -24,6 +24,7 @@ a `ops/garde-socle/verifier.mjs`, qui tourne dans le build de chaque site.
 | Le logo CEDE en largeur : `min-w-0`, jamais `shrink-0` | garde socle, empreinte |
 | Les entrees du menu viennent des ROUTES du site, jamais ecrites en dur dans le gabarit | garde socle, empreinte de `src/data/navigation.ts` |
 | Le numero et sa mention sont deux elements EMPILES, visibles a partir de `xl` | garde socle, empreinte |
+| Le menu parait a partir de `lg`, ou de `xl` au dela de six entrees | garde socle, empreinte |
 | Un bouton « Appeler » sous `xl` : aucune plage de largeur sans appel | garde socle, empreinte |
 | Un bouton de devis, toujours present | garde socle, empreinte |
 | Le panneau replie se referme a la navigation et sur Echap | garde socle, empreinte |
@@ -51,6 +52,7 @@ a `ops/garde-socle/verifier.mjs`, qui tourne dans le build de chaque site.
 | Un piege anti-robot rendu, hors ecran et hors tabulation, dont la valeur part dans `website` | garde socle, empreinte et mesure d'effet |
 | Tout fichier qui appelle `construireCharge` monte `BlocConsentement` | garde socle, mesure d'effet |
 | Tout fichier qui appelle `construireCharge` verifie le nom avant d'envoyer | garde socle, mesure d'effet |
+| Personne n'appelle `submitLead` sans passer par `construireCharge` | garde socle, mesure d'effet |
 | L'envoi va sur `/api/leads` a l'origine du site, jamais sur `/api/leads/track` du CRM | garde socle, empreinte |
 | Messages en francais et en allemand | garde socle, empreinte de `BlocConsentement.tsx` |
 
@@ -58,8 +60,9 @@ a `ops/garde-socle/verifier.mjs`, qui tourne dans le build de chaque site.
 
 | Ce qu'il faut | Verifie par |
 |---|---|
-| `src/pages/not-found.tsx` passe par `Layout` | garde socle, mesure d'effet |
-| TOUS les gabarits de page passent par `Layout` | garde socle, mesure d'effet |
+| UN en-tete, et un seul, atteint chaque route | garde socle, mesure d'effet |
+| soit chaque gabarit passe par `Layout`, soit la coquille en monte un au dessus du routeur | garde socle, mesure d'effet |
+| et alors aucun gabarit n'en monte un SECOND | garde socle, mesure d'effet |
 | Le prerendu REND la page introuvable au lieu de recopier la coquille Vite | garde socle, mesure d'effet |
 | La 404 rendue porte un element `<header>` | `socle-404.mjs` refuse le build sinon |
 | La 404 ne porte ni adresse canonique ni donnees structurees, et porte `noindex` | `socle-404.mjs` |
