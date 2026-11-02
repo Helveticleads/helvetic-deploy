@@ -216,6 +216,25 @@ function mesuresEffet(site, defauts) {
     );
   }
 
+  /*
+   * 4 bis. Et ils verifient le nom AVANT d'envoyer.
+   *
+   * `normalizeLegacyLeadBody` exige 2 caracteres : sans cette garde, la charge
+   * repart en 400 depuis /api/leads et le lead est perdu, le visiteur ne voyant
+   * qu'un message generique. On mesure la garde COTE CODE, pas l'attribut
+   * `required` du champ : `required` ne couvre pas un envoi declenche par le
+   * code, et il se retire d'une ligne dans la page.
+   */
+  const sansNom = sources
+    .filter((p) => /construireCharge\s*\(/.test(lire(p)))
+    .filter((p) => !/\.nom\.trim\(\)\.length\s*<\s*2/.test(lire(p)))
+    .map((p) => path.relative(site, p));
+  if (sansNom.length > 0) {
+    defauts.push(
+      `effet:formulaires qui envoient un lead sans verifier le nom : ${sansNom.join(", ")}`,
+    );
+  }
+
   /* 5. La politique de securite du contenu porte les deux origines du widget. */
   const fCsp = path.join(site, "deploy/csp-batiment.conf");
   if (!fs.existsSync(fCsp)) {
