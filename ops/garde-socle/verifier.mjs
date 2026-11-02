@@ -44,6 +44,7 @@
  *   - le consentement part de la case, jamais ecrit en dur ;
  *   - tout fichier qui construit une charge de lead monte le bloc de
  *     consentement ;
+ *   - tout `<form` passe par `submitLead` ;
  *   - la politique de securite du contenu porte les deux origines du widget ;
  *   - le prerendu rend la page introuvable au lieu de recopier la coquille.
  *
@@ -311,6 +312,25 @@ function mesuresEffet(site, defauts) {
   if (sansContrat.length > 0) {
     defauts.push(
       `effet:formulaires qui appellent submitLead sans passer par construireCharge : ${sansContrat.join(", ")}`,
+    );
+  }
+
+  /*
+   * 4 quater. Un formulaire qui n'envoie rien.
+   *
+   * Les mesures ci-dessus ne regardent que les fichiers qui appellent deja
+   * `construireCharge` ou `submitLead` : un `<form` qui remercie le visiteur
+   * sans rien envoyer les traverse toutes, et le lead est perdu. Vecu sur
+   * /kontakt de helvetic-daemmung.ch. Le defaut est mesure fichier par fichier :
+   * le `<form` et son `submitLead` vivent dans le meme composant.
+   */
+  const sansEnvoi = sources
+    .filter((p) => /<form\b/.test(lire(p)))
+    .filter((p) => !/\bsubmitLead\s*\(/.test(lire(p)))
+    .map((p) => path.relative(site, p));
+  if (sansEnvoi.length > 0) {
+    defauts.push(
+      `effet:formulaires qui ne passent pas par submitLead, donc qui n'envoient rien : ${sansEnvoi.join(", ")}`,
     );
   }
 

@@ -31,3 +31,5 @@ jobs:
           git diff --exit-code -- socle/batiment/MANIFESTE.json
       - name: Double clic du formulaire d'accueil
         run: node ops/garde-socle/preuve-double-clic.mjs v1.3.0
+      - name: Un formulaire qui n'envoie rien
+        run: node ops/garde-socle/preuve-formulaire-envoi.mjs v1.3.0

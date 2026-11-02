@@ -56,6 +56,7 @@ a `ops/garde-socle/verifier.mjs`, qui tourne dans le build de chaque site.
 | Tout fichier qui appelle `construireCharge` monte `BlocConsentement` | garde socle, mesure d'effet |
 | Tout fichier qui appelle `construireCharge` verifie le nom avant d'envoyer | garde socle, mesure d'effet |
 | Personne n'appelle `submitLead` sans passer par `construireCharge` | garde socle, mesure d'effet |
+| Tout `<form` passe par `submitLead` : aucun formulaire ne remercie sans envoyer | garde socle, mesure d'effet |
 | L'envoi va sur `/api/leads` a l'origine du site, jamais sur `/api/leads/track` du CRM | garde socle, empreinte |
 | Messages en francais et en allemand | garde socle, empreinte de `BlocConsentement.tsx` |
 
