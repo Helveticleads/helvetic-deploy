@@ -79,10 +79,23 @@ export function HeroForm({
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
+    /*
+     * Le normaliseur du reseau (`normalizeLegacyLeadBody`) exige un nom d'au
+     * moins 2 caracteres : sans lui, la charge repart en 400 depuis /api/leads
+     * et le lead est PERDU, le visiteur ne voyant qu'un message generique. Le
+     * champ n'est pas `required` dans le gabarit : la garde est donc ici, cote
+     * code. Releve sur helvetique-terrassement.ch, d'ou vient le contrat B.
+     */
+    if (contact.nom.trim().length < 2) {
+      setError("Merci d'indiquer votre nom : il est nécessaire pour traiter la demande.");
+      return;
+    }
     if (!contact.telephone.trim()) {
       setError("Merci d'indiquer un numéro de téléphone pour vous recontacter.");
       return;
     }
+    /* socle:libre:debut verifications du site, en plus des communes ci-dessus */
+    /* socle:libre:fin */
     if (!contact.consent) {
       setError(messageConsentManquant("fr"));
       return;
@@ -159,6 +172,7 @@ export function HeroForm({
 
         {current.kind === "zone" && (
           <div className="mt-3">
+            {/* socle:libre:debut saisie de la ville : un site peut avoir son propre choix de commune */}
             <input
               type="text"
               autoFocus
@@ -168,6 +182,7 @@ export function HeroForm({
               placeholder="Ex. Lausanne, Sion, Fribourg…"
               className="w-full rounded-xl border border-input bg-card px-4 py-3 text-base focus:outline-none focus:ring-2 focus:ring-[var(--color-ring)]"
             />
+            {/* socle:libre:fin */}
             <button
               type="button"
               onClick={next}
