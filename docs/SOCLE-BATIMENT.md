@@ -134,6 +134,11 @@ le socle ne possede pas. La garde les verifie ensuite par ses mesures d'effet.
 Un socle modifie sans recopie rend les sites ROUGES au prochain build : c'est
 voulu. La garde dit quel fichier et quelle ligne.
 
+**La cle `version` de `MANIFESTE.json` augmente de 1 a chaque version publiee.**
+Decision de Frederic du 02.11.2026. Elle vaut 2 avec la v1.4.0. Elle s'ecrit dans
+`ops/garde-socle/manifeste.mjs`, avant le tag. Un site non concerne par une
+version garde la valeur de sa derniere recopie : la garde ne lit pas cette cle.
+
 ### 2.2 bis Reposer le socle sur un site qui a rempli ses zones libres
 
 `poser.mjs` GREFFE les zones libres du site dans le gabarit qu'il pose : ce
