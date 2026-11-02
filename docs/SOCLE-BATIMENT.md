@@ -50,6 +50,7 @@ a `ops/garde-socle/verifier.mjs`, qui tourne dans le build de chaque site.
 | `consent: true` n'est JAMAIS ecrit en dur | garde socle, mesure d'effet |
 | Un piege anti-robot rendu, hors ecran et hors tabulation, dont la valeur part dans `website` | garde socle, empreinte et mesure d'effet |
 | Tout fichier qui appelle `construireCharge` monte `BlocConsentement` | garde socle, mesure d'effet |
+| Tout fichier qui appelle `construireCharge` verifie le nom avant d'envoyer | garde socle, mesure d'effet |
 | L'envoi va sur `/api/leads` a l'origine du site, jamais sur `/api/leads/track` du CRM | garde socle, empreinte |
 | Messages en francais et en allemand | garde socle, empreinte de `BlocConsentement.tsx` |
 
