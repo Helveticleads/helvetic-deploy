@@ -1,12 +1,12 @@
 {
   "socle": "batiment",
-  "version": 2,
+  "version": 3,
   "note": "Empreintes du contenu normalise (zones libres retirees). Refaire avec: node ops/garde-socle/manifeste.mjs",
   "fichiers": [
     {
       "source": "src/components/layout/Header.tsx",
       "chemin": "src/components/layout/Header.tsx",
-      "empreinte": "e9d57704dc12ce92d223c0598b782539378a1bc1db6818d6715eba5b5bec2506"
+      "empreinte": "1ed9043defa109149f9c74dcb6566d322748bd078d3c165c3805a6110639a943"
     },
     {
       "source": "src/components/layout/StickyMobileCTA.tsx",
@@ -22,6 +22,11 @@
       "source": "src/components/socle/BlocConsentement.tsx",
       "chemin": "src/components/socle/BlocConsentement.tsx",
       "empreinte": "0c0cdda5ad18e8a63498c39f17c0eab4e23b62ecdded6298e10a93268275a243"
+    },
+    {
+      "source": "src/components/socle/reserve-widget.css",
+      "chemin": "src/components/socle/reserve-widget.css",
+      "empreinte": "30acb8b505a16c15e92c48955a79df3dcf41af6c7848fc50b79162ce09f50241"
     },
     {
       "source": "src/components/HeroForm.tsx",
@@ -52,7 +57,7 @@
     {
       "source": "../../ops/garde-socle/verifier.mjs",
       "chemin": "scripts/garde-socle.mjs",
-      "empreinte": "8605656420259796a6113337ffff92d23430b154fd3d01a268074e43c120d85f"
+      "empreinte": "f2838e259525863b819b1c70f701b78e3c51e55e11f3221e1ca4f5fee3780e99"
     }
   ]
 }
