@@ -99,7 +99,10 @@ a `ops/garde-socle/verifier.mjs`, qui tourne dans le build de chaque site.
   voulue par la charte ;
 - le logo, les illustrations, les icones de marque ;
 - le contenu : services, villes, problemes, intentions, articles ;
-- les libelles de langue du menu : zone libre dans `src/data/navigation.ts` ;
+- les libelles de langue du menu, le libelle du bouton de devis et les
+  sections de l'en-tete (six emplacements au plus, impose) : zones libres dans
+  `src/data/navigation.ts`, depuis la v1.6.0 pour les deux dernieres
+  (voir `docs/SOCLE-PARC.md`) ;
 - la VALEUR du numero : elle est propre au site, et reste vide tant que la
   ligne n'est pas achetee et joignable.
 
@@ -138,7 +141,7 @@ Un socle modifie sans recopie rend les sites ROUGES au prochain build : c'est
 voulu. La garde dit quel fichier et quelle ligne.
 
 **La cle `version` de `MANIFESTE.json` augmente de 1 a chaque version publiee.**
-Decision de Frederic du 02.11.2026. Elle vaut 2 avec la v1.4.0, 3 avec la v1.5.0. Elle s'ecrit dans
+Decision de Frederic du 02.11.2026. Elle vaut 2 avec la v1.4.0, 3 avec la v1.5.0, 4 avec la v1.6.0. Elle s'ecrit dans
 `ops/garde-socle/manifeste.mjs`, avant le tag. Un site non concerne par une
 version garde la valeur de sa derniere recopie : la garde ne lit pas cette cle.
 
@@ -157,8 +160,10 @@ d'un site, ses cles d'etapes et ses verifications propres, et le build
 resterait VERT : la garde retire justement ces zones avant de comparer. Le cas
 s'est produit une fois, sur terrassement, le 02.11.
 
-Quand le gabarit gagne ou perd une zone libre, le compte ne correspond plus.
-`poser.mjs` n'ecrit alors PAS le fichier, le nomme, et sort en erreur : il n'y
+Quand le gabarit GAGNE une zone libre (v1.6.0), `poser.mjs` greffe par NOM :
+les zones du site restent, les nouvelles prennent la valeur par defaut. Quand
+le site porte une zone que le gabarit ne connait pas, le compte ne correspond
+plus. `poser.mjs` n'ecrit alors PAS le fichier, le nomme, et sort en erreur : il n'y
 a aucune facon sure de deviner quelle zone du site va dans quelle zone du
 gabarit. Le report se fait a la main, une fois, puis la greffe reprend.
 

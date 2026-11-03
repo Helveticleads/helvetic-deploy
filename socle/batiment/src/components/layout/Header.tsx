@@ -50,8 +50,8 @@ import { Link, useLocation } from "wouter";
 import { Menu, Phone, X } from "lucide-react";
 import { Logo } from "@/components/Logo";
 import { CanalWhatsapp } from "@/components/socle/CanalWhatsapp";
-import { CHEMIN_CONTACT, NAV, NAV_TELEPHONE, TEXTES } from "@/data/navigation";
-import { SITE_CONFIG, phoneHref, phoneMention } from "@/data/config";
+import { CHEMIN_CONTACT, NAV, NAV_TELEPHONE, TEXTES, telephone } from "@/data/navigation";
+import { SITE_CONFIG, phoneMention } from "@/data/config";
 import { cn } from "@/lib/utils";
 import "@/components/socle/reserve-widget.css";
 
@@ -87,7 +87,7 @@ export function Header() {
   const [ouvert, setOuvert] = useState(false);
   const [emplacement] = useLocation();
   const courant = normaliserChemin(emplacement);
-  const tel = phoneHref();
+  const tel = telephone();
   const mention = phoneMention();
 
   /** Changer de page referme le panneau : il survivait a sa propre navigation. */

@@ -271,6 +271,29 @@ function mesuresEffet(site, defauts) {
         `effet:la barre declare ${chemins.length} chemins dans sa partie commune, ${CANDIDATS_MAX} au plus : ${chemins.join(", ")}`,
       );
     }
+
+    /*
+     * 1 ter. Depuis la v1.6.0, les emplacements sont une zone libre : un site
+     * du parc nomme ses sections. La limite de six reste IMPOSEE : on compte
+     * les emplacements declares dans la zone, c'est a dire les tableaux du
+     * premier niveau de `EMPLACEMENTS`.
+     */
+    const brut = lire(fNav);
+    const zone = brut.match(/socle:libre:debut sections[^\n]*\n([\s\S]*?)socle:libre:fin/);
+    if (zone) {
+      const decl = zone[1].slice(zone[1].indexOf("= [") + 3);
+      let profondeur = 0;
+      let emplacements = 0;
+      for (const c of decl) {
+        if (c === "[") { if (profondeur === 0) emplacements += 1; profondeur += 1; }
+        else if (c === "]") { if (profondeur === 0) break; profondeur -= 1; }
+      }
+      if (emplacements > EMPLACEMENTS_MAX) {
+        defauts.push(
+          `effet:la barre declare ${emplacements} emplacements dans sa zone libre, ${EMPLACEMENTS_MAX} au plus`,
+        );
+      }
+    }
   }
 
   /*

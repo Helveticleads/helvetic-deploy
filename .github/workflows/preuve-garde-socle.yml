@@ -35,3 +35,5 @@ jobs:
         run: node ops/garde-socle/preuve-formulaire-envoi.mjs v1.3.0
       - name: Le menu ouvert retire le chat, la place du bouton est reservee
         run: node ops/garde-socle/preuve-widget.mjs v1.4.0
+      - name: Drapeau ligne, libelle du bouton, horaire etiquete, six emplacements, greffe par nom
+        run: node ops/garde-socle/preuve-v1-6-0.mjs v1.5.0

@@ -68,22 +68,52 @@ function zonesLibres(texte) {
   return zones;
 }
 
+/** Le nom d'une zone : le texte de son marqueur d'ouverture. */
+function nomZone(zone) {
+  return zone.split("\n")[0].replace(/^\s*(\/\*|#)\s*socle:libre:debut/, "").replace(/\*\/\s*$/, "").trim();
+}
+
+/*
+ * Quand le gabarit GAGNE une zone (v1.6.0 : le libelle du bouton et les
+ * sections de l'en-tete), la greffe se fait par NOM : chaque zone du site va
+ * dans la zone du gabarit qui porte le meme nom, et une zone nouvelle garde la
+ * valeur par defaut du gabarit, qui ne change pas le rendu. Une zone du site
+ * que le gabarit ne connait plus, ou un nom en double, reste un refus.
+ */
+function parNom(duGabarit, duSite) {
+  const noms = duGabarit.map(nomZone);
+  if (new Set(noms).size !== noms.length) return null;
+  const choix = duGabarit.slice();
+  for (const z of duSite) {
+    const i = noms.indexOf(nomZone(z));
+    if (i < 0 || choix[i] !== duGabarit[i]) return null;
+    choix[i] = z;
+  }
+  return choix;
+}
+
 /** Le gabarit, avec les zones libres du site a la place des siennes. */
 function greffer(gabarit, existant) {
   const duGabarit = zonesLibres(gabarit);
   const duSite = zonesLibres(existant);
   if (duGabarit.length === 0) return { texte: gabarit, greffes: 0 };
+  let choix = duSite;
+  let nouvelles = 0;
   if (duGabarit.length !== duSite.length) {
-    return { ecart: `${duSite.length} zone(s) libre(s) dans le site, ${duGabarit.length} dans le gabarit` };
+    choix = parNom(duGabarit, duSite);
+    if (!choix) {
+      return { ecart: `${duSite.length} zone(s) libre(s) dans le site, ${duGabarit.length} dans le gabarit` };
+    }
+    nouvelles = duGabarit.length - duSite.length;
   }
   let sortie = "";
   let curseur = 0;
   for (let i = 0; i < duGabarit.length; i += 1) {
     const ou = gabarit.indexOf(duGabarit[i], curseur);
-    sortie += gabarit.slice(curseur, ou) + duSite[i];
+    sortie += gabarit.slice(curseur, ou) + choix[i];
     curseur = ou + duGabarit[i].length;
   }
-  return { texte: sortie + gabarit.slice(curseur), greffes: duGabarit.length };
+  return { texte: sortie + gabarit.slice(curseur), greffes: duSite.length, nouvelles };
 }
 
 let poses = 0;
@@ -111,9 +141,10 @@ for (const entree of manifeste.fichiers) {
   }
   fs.writeFileSync(destination, bilan.texte, "utf8");
   poses += 1;
+  const nouvelles = bilan.nouvelles ? `, ${bilan.nouvelles} zone(s) nouvelle(s) du gabarit` : "";
   console.log(
-    bilan.greffes > 0
-      ? `  pose ${entree.chemin} (${bilan.greffes} zone(s) libre(s) du site gardee(s))`
+    bilan.greffes > 0 || nouvelles
+      ? `  pose ${entree.chemin} (${bilan.greffes} zone(s) libre(s) du site gardee(s)${nouvelles})`
       : `  pose ${entree.chemin}`,
   );
 }
