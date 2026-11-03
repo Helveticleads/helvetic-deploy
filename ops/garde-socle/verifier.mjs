@@ -46,7 +46,10 @@
  *     consentement ;
  *   - tout `<form` passe par `submitLead` ;
  *   - la politique de securite du contenu porte les deux origines du widget ;
- *   - le prerendu rend la page introuvable au lieu de recopier la coquille.
+ *   - le prerendu rend la page introuvable au lieu de recopier la coquille ;
+ *   - sur un site du parc (drapeau `ligne` declare), le pied et le contact
+ *     passent par `telephone()`, sans icone de telephone hors d'un lien
+ *     qui appelle, sans horaire d'appel.
  *
  * Usage :
  *   node scripts/garde-socle.mjs                      (depuis le dossier du site)
@@ -357,6 +360,8 @@ function mesuresEffet(site, defauts) {
     );
   }
 
+  mesurePiedContact(site, defauts);
+
   /* 5. La politique de securite du contenu porte les deux origines du widget. */
   const fCsp = path.join(site, "deploy/csp-batiment.conf");
   if (!fs.existsSync(fCsp)) {
@@ -385,6 +390,95 @@ function mesuresEffet(site, defauts) {
         "effet:scripts/prerender-content.mjs n'appelle pas rendre404 : la page introuvable serait servie sans en-tete ni pied",
       );
     }
+  }
+}
+
+/*
+ * 7. Le pied de page et la page contact d'un site du PARC.
+ *
+ * Decision de Frederic du 03.11 : le pied et le contact appartiennent au
+ * site, mais ils passent par `telephone()` a la pose, et la garde verifie :
+ *   - aucun `tel:` sans numero : le lien vient de `telephone()`, jamais de
+ *     `phoneHref()` ni d'un `tel:` construit a la main ;
+ *   - aucune icone de telephone sur un lien qui n'appelle pas ;
+ *   - aucun horaire d'appel. Un horaire d'intervention etiquete reste permis :
+ *     `<HorairesIntervention />`, ou une ligne qui porte « intervention » /
+ *     « Einsatz ».
+ *
+ * La mesure s'allume quand `src/data/config.ts` declare le drapeau `ligne`,
+ * ce que fait chaque site du parc a la pose (`ligne: true` ou `ligne: false`).
+ * Les 29 sites du batiment ne le declarent pas : leur rendu ne change pas.
+ * Le pied est tout composant dont le nom dit « footer » ou qui monte
+ * `<footer` ; le contact, toute page dont le nom dit « contact » ou « kontakt ».
+ */
+const ICONE_TEL = /Phone/;
+const HEURE = [
+  /\b([01]?\d|2[0-3])\s?[h:]\s?[0-5]\d\b/,
+  /\b([01]?\d|2[0-3])(\.[0-5]\d)?\s?Uhr\b/,
+  /\b([01]?\d|2[0-3])\s?h\s?(-|–|à|a)\s?([01]?\d|2[0-3])\s?h/,
+  /Anrufzeiten|Telefonzeiten|Öffnungszeiten|Oeffnungszeiten|[Hh]oraires? d['’](appel|ouverture)/,
+  /\.(openingHours|businessHours|hours|horaires|oeffnungszeiten)\b/,
+];
+const ETIQUETTE_INTERVENTION = /[Ii]ntervention|Einsatz|HorairesIntervention/;
+/* Une duree (« un entretien d'1h a 1h30 ») n'est pas un horaire. */
+const DUREE = /d['’]\s?\d{1,2}\s?h\d{0,2}\s?(à|a|-|–)\s?\d{1,2}\s?h\d{0,2}/g;
+
+export function mesurePiedContact(site, defauts) {
+  const fConfig = path.join(site, "src/data/config.ts");
+  if (!fs.existsSync(fConfig) || !/\bligne\s*:/.test(lire(fConfig))) return;
+
+  const fichiers = [];
+  (function parcourir(dir) {
+    if (!fs.existsSync(dir)) return;
+    for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
+      const p = path.join(dir, e.name);
+      if (e.isDirectory()) {
+        if (e.name !== "node_modules") parcourir(p);
+      } else if (e.name.endsWith(".tsx")) {
+        const rel = path.relative(site, p);
+        const pied = /footer/i.test(e.name) || (rel.includes("components") && /<footer\b/.test(lire(p)));
+        const contact = rel.split(path.sep).includes("pages") && /contact|kontakt/i.test(e.name);
+        if (pied || contact) fichiers.push(p);
+      }
+    }
+  })(path.join(site, "src"));
+
+  for (const p of fichiers) {
+    const rel = path.relative(site, p);
+    const texte = lire(p);
+
+    if (/\bphoneHref\s*\(/.test(texte)) {
+      defauts.push(`effet:pied/contact ${rel} passe par phoneHref() au lieu de telephone()`);
+    }
+    if (/tel:/.test(texte)) {
+      defauts.push(`effet:pied/contact ${rel} ecrit un lien tel: a la main : il doit venir de telephone()`);
+    }
+
+    const icones = [...texte.matchAll(/import\s*\{([^}]*)\}\s*from\s*["']lucide-react["']/g)]
+      .flatMap((m) => m[1].split(","))
+      .map((s) => s.trim().split(/\s+as\s+/))
+      .filter(([nom]) => ICONE_TEL.test(nom))
+      .map(([nom, alias]) => alias ?? nom);
+    for (const icone of icones) {
+      for (const m of texte.matchAll(new RegExp(`<${icone}\\b`, "g"))) {
+        const avant = texte.slice(0, m.index);
+        const ouverture = Math.max(avant.lastIndexOf("<a "), avant.lastIndexOf("<a\n"), avant.lastIndexOf("<Link"));
+        const fermee = ouverture < 0 || /<\/a>|<\/Link>/.test(avant.slice(ouverture));
+        const balise = ouverture < 0 ? "" : avant.slice(ouverture, avant.indexOf(">", ouverture) + 1);
+        if (fermee || !/telephone\s*\(|\btel\w*\b/i.test(balise.replace(/className="[^"]*"/g, ""))) {
+          const ligne = avant.split("\n").length;
+          defauts.push(`effet:pied/contact ${rel} ligne ${ligne} : icone ${icone} sur un lien qui n'appelle pas`);
+        }
+      }
+    }
+
+    texte.split("\n").forEach((l, i) => {
+      if (ETIQUETTE_INTERVENTION.test(l)) return;
+      const sansDuree = l.replace(DUREE, "");
+      if (HEURE.some((r) => r.test(sansDuree))) {
+        defauts.push(`effet:pied/contact ${rel} ligne ${i + 1} : horaire d'appel « ${l.trim().slice(0, 60)} »`);
+      }
+    });
   }
 }
 

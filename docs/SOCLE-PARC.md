@@ -19,6 +19,7 @@ batiment.
 | Les sections de l'en-tete | zone libre « sections de l'en-tete, six emplacements au plus » | les six emplacements du batiment | garde socle, mesure 1 ter ; le module refuse de se charger au dela de six |
 | L'horaire d'intervention | `src/components/socle/HorairesIntervention.tsx`, valeur `SITE_CONFIG.horairesIntervention` | absent : rien n'est rendu | garde socle, empreinte ; `preuve-v1-6-0.mjs` |
 | La greffe par nom | `ops/garde-socle/poser.mjs` | sans objet | `preuve-v1-6-0.mjs` |
+| Le pied et le contact du parc | garde socle, mesure 7 | eteinte sans drapeau `ligne` : batiment inchange | `preuve-v1-6-0.mjs` |
 
 **Le drapeau `ligne`.** Regle du 03.11 : aucune icone de telephone sans lien
 `tel:`, aucun horaire d'appel sans ligne. Avec `ligne: false`, l'en-tete, le
@@ -26,6 +27,24 @@ menu replie et la barre collante du bas ne rendent ni numero, ni bouton
 « Appeler », ni icone, meme si `SITE_CONFIG.phone` est encore ecrit. Le pied
 et la page contact appartiennent au site : ils doivent passer par
 `telephone()` au lieu de `phoneHref()` (geste du site, voir § 3).
+
+**Le pied et le contact du parc (mesure 7).** Decision de Frederic du 03.11 :
+la garde les verifie. Elle s'allume des que `src/data/config.ts` declare
+`ligne` (chaque site du parc le declare a la pose, `true` ou `false`) et
+refuse, dans tout composant « footer » ou qui monte `<footer`, et dans toute
+page « contact » / « kontakt » :
+1. un `tel:` ecrit a la main ou un appel a `phoneHref()` : le lien vient de
+   `telephone()`, donc jamais de `tel:` sans numero ;
+2. une icone de telephone (`lucide-react`, nom qui contient `Phone`) hors d'un
+   lien dont le `href` vient de `telephone()` ;
+3. un horaire d'appel : heure (« 8:00 », « 8h30 », « 7 Uhr », « 8h-12h »),
+   « Öffnungszeiten », « horaires d'ouverture », ou un champ `.hours` /
+   `.openingHours` rendu. Une ligne etiquetee « Intervention » / « Einsatz »,
+   ou `<HorairesIntervention />`, reste permise ; une duree (« d'1h a 1h30 »)
+   n'est pas un horaire.
+
+Les 29 sites du batiment ne declarent pas `ligne` : la mesure s'y tait, leur
+rendu ne change pas (contre-epreuve sur les 29).
 
 **Le plafond de six.** Il reste IMPOSE. Les emplacements sont devenus une zone
 libre pour qu'un site nomme les siens (« Prestations », « Lieux »), mais :
@@ -103,4 +122,7 @@ sites du parc sans numero declarent `phone: ""` et `ligne: false`.
    `poser.mjs`, greffe par nom, aucun changement de rendu (contre-epreuve).
    Ensuite le parc, un site a la fois par hebergeur, pilotes jardin (lot 1)
    et pool (lot 3), chacun avec ses raccords et ses six entrees validees.
-   L'ordre reste a trancher par Frederic.
+   Ordre decide par Frederic le 03.11 : le batiment d'abord, et seulement
+   APRES la fin de la recopie de la v1.5.0 ; publier la v1.6.0 ; reposer les
+   29 sites du batiment sans changement de rendu ; puis le parc site par
+   site, pilotes jardin et pool.

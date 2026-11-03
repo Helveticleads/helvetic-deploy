@@ -12,6 +12,10 @@
  *   5. Reposer le gabarit sur une copie qui n'a pas les zones nouvelles garde
  *      les zones du site et prend les valeurs par defaut. L'ancien `poser.mjs`
  *      refusait le fichier.
+ *   6. Sur un site du parc, la garde refuse au pied et au contact un `tel:`
+ *      hors `telephone()`, une icone de telephone sur un lien qui n'appelle
+ *      pas et un horaire d'appel ; sans drapeau `ligne` (batiment), elle se
+ *      tait. L'ancienne garde ne voyait aucun des trois.
  *
  * Aucun reseau hors npm, aucun site reel : des doublures et des dossiers jetables.
  *
@@ -191,6 +195,63 @@ constat(pose.code === 0 && pose.nav.includes('services: "Leistungen"') && pose.n
   "poser : zone du site gardee, deux zones nouvelles prises au gabarit");
 const vieillePose = poser(ancien);
 constat(vieillePose.code !== 0, `contre-epreuve ${refAncienne} : l'ancien poser.mjs refuse le fichier (code ${vieillePose.code})`);
+
+/* 6. Le pied de page et la page contact d'un site du parc. */
+function gardeSite(version, fichiers) {
+  const site = path.join(tmp, `parc-${Math.random().toString(36).slice(2)}`);
+  for (const [f, contenu] of Object.entries(fichiers)) {
+    fs.mkdirSync(path.dirname(path.join(site, f)), { recursive: true });
+    fs.writeFileSync(path.join(site, f), contenu);
+  }
+  fs.mkdirSync(path.join(site, "scripts"), { recursive: true });
+  fs.writeFileSync(path.join(site, "scripts/socle-manifeste.json"), JSON.stringify({ fichiers: [] }));
+  fs.copyFileSync(path.join(version, "ops/garde-socle/verifier.mjs"), path.join(site, "scripts/garde-socle.mjs"));
+  const r = spawnSync("node", ["scripts/garde-socle.mjs"], { cwd: site, encoding: "utf8" });
+  return `${r.stdout}${r.stderr}`.split("\n").filter((l) => l.includes("pied/contact"));
+}
+const CONFIG_PARC = 'export const SITE_CONFIG = { name: "Site", phone: "", ligne: false };';
+const PIED_FAUTIF = `import { Phone, Mail } from "lucide-react";
+import { phoneHref } from "@/data/config";
+export function Footer() {
+  return (
+    <footer>
+      <a href="/#formulaire" className="flex"><Phone className="h-4 w-4" /> Rappel</a>
+      <a href={phoneHref() ?? undefined}>Appeler</a>
+      <p>Lundi au vendredi, 8:00 - 18:00</p>
+    </footer>
+  );
+}`;
+const CONTACT_FAUTIF = `export default function Contact() {
+  return <a href={\`tel:\${"021 000 00 00"}\`}>Appeler</a>;
+}`;
+const PIED_PROPRE = `import { Phone as IconeTel } from "lucide-react";
+import { telephone } from "@/data/navigation";
+import { HorairesIntervention } from "@/components/socle/HorairesIntervention";
+export function Footer() {
+  const tel = telephone();
+  return (
+    <footer>
+      {tel && (
+        <a href={tel} className="flex"><IconeTel className="h-4 w-4" /> Appeler</a>
+      )}
+      <HorairesIntervention />
+      <p>Intervention : lundi au samedi, 7h30 - 20h00</p>
+      <p>Premier entretien d'1h à 1h30</p>
+    </footer>
+  );
+}`;
+const fautif = { "src/data/config.ts": CONFIG_PARC, "src/components/layout/Footer.tsx": PIED_FAUTIF, "src/pages/Contact.tsx": CONTACT_FAUTIF };
+const vu = gardeSite(actuel, fautif);
+constat(vu.some((l) => /Footer.tsx passe par phoneHref/.test(l)) && vu.some((l) => /Contact.tsx ecrit un lien tel:/.test(l)),
+  "garde, parc : tel: hors telephone() refuse, au pied et au contact");
+constat(vu.some((l) => /ligne 6 : icone Phone sur un lien qui n'appelle pas/.test(l)), "garde, parc : icone de telephone sur un lien vers le formulaire, refusee");
+constat(vu.some((l) => /ligne 8 : horaire d'appel/.test(l)), "garde, parc : horaire d'appel non etiquete, refuse");
+const propre = gardeSite(actuel, { "src/data/config.ts": CONFIG_PARC, "src/components/layout/Footer.tsx": PIED_PROPRE, "src/pages/Contact.tsx": "export default () => null;" });
+constat(propre.length === 0, `garde, parc : telephone(), icone sur le lien tel, horaire etiquete : accepte (${propre.length} defaut)`);
+const batiment = gardeSite(actuel, { ...fautif, "src/data/config.ts": 'export const SITE_CONFIG = { name: "Site", phone: "" };' });
+constat(batiment.length === 0, "garde, batiment (sans drapeau ligne) : mesure eteinte, rien ne change");
+const vieuxVu = gardeSite(ancien, fautif);
+constat(vieuxVu.length === 0, `contre-epreuve ${refAncienne} : l'ancienne garde laisse passer les trois defauts du pied et du contact`);
 
 fs.rmSync(tmp, { recursive: true, force: true });
 if (echecs > 0) {
