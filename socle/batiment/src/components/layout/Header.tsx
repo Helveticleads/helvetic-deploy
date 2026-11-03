@@ -53,6 +53,7 @@ import { CanalWhatsapp } from "@/components/socle/CanalWhatsapp";
 import { CHEMIN_CONTACT, NAV, NAV_TELEPHONE, TEXTES } from "@/data/navigation";
 import { SITE_CONFIG, phoneHref, phoneMention } from "@/data/config";
 import { cn } from "@/lib/utils";
+import "@/components/socle/reserve-widget.css";
 
 /*
  * Le bouton de devis est ECRIT ICI, et non pris au composant Button du site.
@@ -91,6 +92,17 @@ export function Header() {
 
   /** Changer de page referme le panneau : il survivait a sa propre navigation. */
   useEffect(() => setOuvert(false), [emplacement]);
+
+  /*
+   * Panneau ouvert : le chat se retire, il ne passe plus par-dessus le menu.
+   * C'est le contrat du widget (helvetic-comms, docs/CONTRAT-WIDGET-CONTACT.md,
+   * geste 3) : un attribut sur <html>, que le chargeur observe. Il revient a la
+   * fermeture, et si l'en-tete se demonte.
+   */
+  useEffect(() => {
+    document.documentElement.toggleAttribute("data-hc-nav-open", ouvert);
+    return () => document.documentElement.removeAttribute("data-hc-nav-open");
+  }, [ouvert]);
 
   /** Echap referme le panneau. */
   useEffect(() => {

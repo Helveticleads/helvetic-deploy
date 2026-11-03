@@ -1,12 +1,12 @@
 {
   "socle": "batiment",
-  "version": 2,
+  "version": 3,
   "note": "Empreintes du contenu normalise (zones libres retirees). Refaire avec: node ops/garde-socle/manifeste.mjs",
   "fichiers": [
     {
       "source": "src/components/layout/Header.tsx",
       "chemin": "src/components/layout/Header.tsx",
-      "empreinte": "e9d57704dc12ce92d223c0598b782539378a1bc1db6818d6715eba5b5bec2506"
+      "empreinte": "1ed9043defa109149f9c74dcb6566d322748bd078d3c165c3805a6110639a943"
     },
     {
       "source": "src/components/layout/StickyMobileCTA.tsx",
@@ -22,6 +22,11 @@
       "source": "src/components/socle/BlocConsentement.tsx",
       "chemin": "src/components/socle/BlocConsentement.tsx",
       "empreinte": "0c0cdda5ad18e8a63498c39f17c0eab4e23b62ecdded6298e10a93268275a243"
+    },
+    {
+      "source": "src/components/socle/reserve-widget.css",
+      "chemin": "src/components/socle/reserve-widget.css",
+      "empreinte": "6e3b286ac179067c278ab8a38a5a1ff658b6c6b7577803e75a7af5f0f86339f0"
     },
     {
       "source": "src/components/HeroForm.tsx",

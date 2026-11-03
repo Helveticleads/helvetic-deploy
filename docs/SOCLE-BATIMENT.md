@@ -32,6 +32,8 @@ a `ops/garde-socle/verifier.mjs`, qui tourne dans le build de chaque site.
 | Un bouton de devis, toujours present | garde socle, empreinte |
 | Le panneau replie se referme a la navigation et sur Echap | garde socle, empreinte |
 | L'emplacement WhatsApp existe, dynamique, eteint, et ne laisse AUCUN vide | garde socle, empreinte de `CanalWhatsapp.tsx` |
+| Le panneau replie ouvert pose `data-hc-nav-open` sur `<html>` : le chat se retire, il ne passe plus par-dessus le menu | garde socle, empreinte ; `preuve-widget.mjs` |
+| Sous 1024 px, `main .container` et `footer .container` s'arretent avant le bouton du chat (`--hc-widget-reserve`, publiee par le chargeur) | garde socle, empreinte de `reserve-widget.css`, importee par l'en-tete ; `preuve-widget.mjs` |
 
 ### 1.2 Le numero
 
@@ -136,7 +138,7 @@ Un socle modifie sans recopie rend les sites ROUGES au prochain build : c'est
 voulu. La garde dit quel fichier et quelle ligne.
 
 **La cle `version` de `MANIFESTE.json` augmente de 1 a chaque version publiee.**
-Decision de Frederic du 02.11.2026. Elle vaut 2 avec la v1.4.0. Elle s'ecrit dans
+Decision de Frederic du 02.11.2026. Elle vaut 2 avec la v1.4.0, 3 avec la v1.5.0. Elle s'ecrit dans
 `ops/garde-socle/manifeste.mjs`, avant le tag. Un site non concerne par une
 version garde la valeur de sa derniere recopie : la garde ne lit pas cette cle.
 
