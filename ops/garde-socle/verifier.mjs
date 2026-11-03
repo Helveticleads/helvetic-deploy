@@ -407,8 +407,10 @@ function mesuresEffet(site, defauts) {
  *
  * La mesure s'allume quand `src/data/config.ts` declare le drapeau `ligne`.
  * Decision de Frederic du 03.11 : le drapeau est OBLIGATOIRE a chaque pose du
- * parc (`ligne: true` ou `ligne: false`). Un paquet du parc, reconnu au nom de
- * son `package.json` (liste `PAQUETS_PARC`), qui ne le declare pas est refuse.
+ * parc (`ligne: true` ou `ligne: false`). Un site du parc qui ne le declare pas
+ * est refuse. Il est reconnu au nom de son `package.json` (`PAQUETS_PARC`) OU
+ * au domaine de sa configuration (`DOMAINES_PARC`, decision du 03.11) : un
+ * paquet renomme ne s'echappe pas.
  * Les 29 sites du batiment ne sont pas dans la liste et ne le declarent pas :
  * la mesure s'y tait, leur rendu ne change pas.
  *
@@ -429,14 +431,16 @@ const HEURE = [
 ];
 const ETIQUETTE_INTERVENTION = /[Ii]ntervention|Einsatz|HorairesIntervention/;
 const OPTION_DE_CHAMP = /<(option|SelectItem)\b[^>]*>[^<]*<\/(option|SelectItem)>/g;
-export const PAQUETS_PARC = new Set(
-  [
-    "helvetic-garten", "helvetic-hochzeit", "helvetic-pool", "helvetic-reinigung", "helvetic-vermoegen",
-    "helvetic-whirlpool", "helvetique-demenagements", "helvetique-dentaire", "helvetique-elagage",
-    "helvetique-evenementiel", "helvetique-jardin", "helvetique-mariage", "helvetique-nettoyage",
-    "helvetique-patrimoine", "helvetique-piscine", "helvetique-spa",
-  ].map((n) => `@workspace/${n}`),
-);
+const SITES_PARC = [
+  "helvetic-garten", "helvetic-hochzeit", "helvetic-pool", "helvetic-reinigung", "helvetic-vermoegen",
+  "helvetic-whirlpool", "helvetique-demenagements", "helvetique-dentaire", "helvetique-elagage",
+  "helvetique-evenementiel", "helvetique-jardin", "helvetique-mariage", "helvetique-nettoyage",
+  "helvetique-patrimoine", "helvetique-piscine", "helvetique-spa",
+];
+/* Deux reperes pour les memes 16 sites : le nom du paquet, et le domaine
+   declare dans `src/data/config.ts` (`domain: "..."`). Un seul suffit. */
+export const PAQUETS_PARC = new Set(SITES_PARC.map((n) => `@workspace/${n}`));
+export const DOMAINES_PARC = new Set(SITES_PARC.map((n) => `${n}.ch`));
 /* Une duree (« un entretien d'1h a 1h30 ») n'est pas un horaire. */
 const DUREE = /d['’]\s?\d{1,2}\s?h\d{0,2}\s?(à|a|-|–)\s?\d{1,2}\s?h\d{0,2}/g;
 
@@ -449,10 +453,12 @@ export function mesurePiedContact(site, defauts) {
   } catch {
     /* sans package.json lisible, le site n'est pas reconnu comme du parc */
   }
-  const drapeau = fs.existsSync(fConfig) && /\bligne\s*:/.test(lire(fConfig));
+  const config = fs.existsSync(fConfig) ? lire(fConfig) : "";
+  const domaine = (config.match(/\bdomain:\s*["']([^"']+)["']/) ?? [])[1]?.trim().toLowerCase().replace(/^www\./, "") ?? null;
+  const drapeau = /\bligne\s*:/.test(config);
   if (!drapeau) {
-    if (PAQUETS_PARC.has(nom)) {
-      defauts.push(`effet:site du parc (${nom}) sans drapeau ligne dans src/data/config.ts : declarer ligne: true ou ligne: false`);
+    if (PAQUETS_PARC.has(nom) || DOMAINES_PARC.has(domaine)) {
+      defauts.push(`effet:site du parc (${PAQUETS_PARC.has(nom) ? nom : domaine}) sans drapeau ligne dans src/data/config.ts : declarer ligne: true ou ligne: false`);
     } else {
       return;
     }

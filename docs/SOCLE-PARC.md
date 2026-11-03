@@ -44,8 +44,11 @@ page « contact » / « kontakt » :
    n'est pas un horaire.
 
 Le drapeau est OBLIGATOIRE a chaque pose du parc (decision du 03.11) : un
-paquet du parc (liste `PAQUETS_PARC` de la garde, par nom de `package.json`)
-sans `ligne` est refuse. Un creneau de rappel propose comme option d'un champ
+site du parc sans `ligne` est refuse. Le site est reconnu a l'un ou l'autre
+de deux reperes, qui designent les memes 16 sites (une preuve le verifie) :
+le nom de son `package.json` (`PAQUETS_PARC`) ou le domaine de sa
+configuration, `domain: "..."` dans `src/data/config.ts` (`DOMAINES_PARC`).
+Chaque pose du parc declare donc aussi `domain` dans ses raccords. Un creneau de rappel propose comme option d'un champ
 (`<option>`, `<SelectItem>`) est un choix du visiteur et reste permis ; le
 meme horaire ecrit dans le texte est refuse.
 

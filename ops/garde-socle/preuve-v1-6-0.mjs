@@ -19,6 +19,10 @@
  *   7. Le drapeau `ligne` est obligatoire sur un paquet du parc ; un creneau
  *      de rappel propose comme option d'un champ est permis, le meme horaire
  *      ecrit dans le texte reste refuse.
+ *   8. Second repere : un site du parc est reconnu a son paquet OU a son
+ *      domaine. Les deux listes designent les memes 16 sites ; un paquet
+ *      renomme au domaine connu est refuse sans drapeau. 27d4b21 le laissait
+ *      passer.
  *
  * Aucun reseau hors npm, aucun site reel : des doublures et des dossiers jetables.
  *
@@ -284,6 +288,24 @@ const avantCreneaux = extraire("f4ea14f");
 constat(gardeSite(avantCreneaux, avecCreneaux).length === 2, "contre-epreuve f4ea14f : la mesure 7 d'avant refusait les deux options");
 constat(gardeSite(ancien, { ...avecCreneaux, "src/pages/Contact.tsx": TEXTE_HORAIRE }).length === 0,
   `contre-epreuve ${refAncienne} : l'ancienne garde laisse passer l'horaire ecrit`);
+
+/* 8. Second repere : le domaine. */
+const { PAQUETS_PARC, DOMAINES_PARC } = await import(path.join(actuel, "ops/garde-socle/verifier.mjs"));
+const parPaquet = [...PAQUETS_PARC].map((n) => n.replace(/^@workspace\//, ""));
+const parDomaine = [...DOMAINES_PARC].map((d) => d.replace(/\.ch$/, ""));
+const seuls = [...parPaquet.filter((s) => !parDomaine.includes(s)), ...parDomaine.filter((s) => !parPaquet.includes(s))];
+constat(PAQUETS_PARC.size === 16 && DOMAINES_PARC.size === 16 && seuls.length === 0,
+  `listes du parc : ${PAQUETS_PARC.size} paquets, ${DOMAINES_PARC.size} domaines, ${seuls.length} site dans une seule liste`);
+const CONFIG_DOMAINE = (d, ligne) => `export const SITE_CONFIG = { name: "Site", domain: "${d}", phone: ""${ligne ? ", ligne: false" : ""} };`;
+const renomme = { "package.json": PAQUET("site-renomme"), "src/data/config.ts": CONFIG_DOMAINE("helvetique-jardin.ch", false) };
+constat(gardeSite(actuel, renomme).some((l) => /site du parc \(helvetique-jardin\.ch\) sans drapeau ligne/.test(l)),
+  "garde : paquet renomme, domaine du parc, sans drapeau : refuse");
+constat(gardeSite(actuel, { ...renomme, "src/data/config.ts": CONFIG_DOMAINE("helvetique-jardin.ch", true) }).length === 0,
+  "garde : paquet renomme, domaine du parc, ligne: false : accepte");
+constat(gardeSite(actuel, { "package.json": PAQUET("helvetique-plomberie"), "src/data/config.ts": CONFIG_DOMAINE("helvetique-plomberie.ch", false) }).length === 0,
+  "garde : domaine du batiment sans drapeau : mesure eteinte");
+const avantDomaine = extraire("27d4b21");
+constat(gardeSite(avantDomaine, renomme).length === 0, "contre-epreuve 27d4b21 : le paquet renomme echappait a l'obligation du drapeau");
 
 fs.rmSync(tmp, { recursive: true, force: true });
 if (echecs > 0) {
