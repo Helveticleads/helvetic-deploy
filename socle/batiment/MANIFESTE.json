@@ -26,7 +26,7 @@
     {
       "source": "src/components/socle/reserve-widget.css",
       "chemin": "src/components/socle/reserve-widget.css",
-      "empreinte": "6e3b286ac179067c278ab8a38a5a1ff658b6c6b7577803e75a7af5f0f86339f0"
+      "empreinte": "30acb8b505a16c15e92c48955a79df3dcf41af6c7848fc50b79162ce09f50241"
     },
     {
       "source": "src/components/HeroForm.tsx",

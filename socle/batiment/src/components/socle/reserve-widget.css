@@ -11,11 +11,22 @@
  * A partir de 1024 px, rien ne change : la mise en page de bureau reste
  * identique.
  *
+ * Trois formes de conteneur sont couvertes : `.container`, le couple
+ * `mx-auto px-4` des sites qui n'utilisent pas `.container`, et tout element
+ * qu'un site marque `data-hc-reserve` dans ses propres fichiers (un bandeau
+ * centre sans marge, par exemple). Mesure du 03.11.2026 sur le servi : sans
+ * les deux dernieres, peinture et malerei gardaient 87 et 66 elements sous
+ * la bulle.
+ *
  * Importe par l'en-tete du socle : tout site qui a l'en-tete a cette regle.
  */
 @media (max-width: 1023px) {
   main .container,
-  footer .container {
+  footer .container,
+  main .mx-auto.px-4,
+  footer .mx-auto.px-4,
+  main [data-hc-reserve],
+  footer [data-hc-reserve] {
     padding-right: max(1rem, var(--hc-widget-reserve, 0px));
   }
 }
