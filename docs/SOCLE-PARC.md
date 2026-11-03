@@ -43,8 +43,15 @@ page « contact » / « kontakt » :
    ou `<HorairesIntervention />`, reste permise ; une duree (« d'1h a 1h30 »)
    n'est pas un horaire.
 
-Les 29 sites du batiment ne declarent pas `ligne` : la mesure s'y tait, leur
-rendu ne change pas (contre-epreuve sur les 29).
+Le drapeau est OBLIGATOIRE a chaque pose du parc (decision du 03.11) : un
+paquet du parc (liste `PAQUETS_PARC` de la garde, par nom de `package.json`)
+sans `ligne` est refuse. Un creneau de rappel propose comme option d'un champ
+(`<option>`, `<SelectItem>`) est un choix du visiteur et reste permis ; le
+meme horaire ecrit dans le texte est refuse.
+
+Les 29 sites du batiment ne sont pas dans la liste et ne declarent pas
+`ligne` : la mesure s'y tait, leur rendu ne change pas (contre-epreuve sur
+les 29).
 
 **Le plafond de six.** Il reste IMPOSE. Les emplacements sont devenus une zone
 libre pour qu'un site nomme les siens (« Prestations », « Lieux »), mais :

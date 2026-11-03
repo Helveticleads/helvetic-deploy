@@ -405,9 +405,17 @@ function mesuresEffet(site, defauts) {
  *     `<HorairesIntervention />`, ou une ligne qui porte « intervention » /
  *     « Einsatz ».
  *
- * La mesure s'allume quand `src/data/config.ts` declare le drapeau `ligne`,
- * ce que fait chaque site du parc a la pose (`ligne: true` ou `ligne: false`).
- * Les 29 sites du batiment ne le declarent pas : leur rendu ne change pas.
+ * La mesure s'allume quand `src/data/config.ts` declare le drapeau `ligne`.
+ * Decision de Frederic du 03.11 : le drapeau est OBLIGATOIRE a chaque pose du
+ * parc (`ligne: true` ou `ligne: false`). Un paquet du parc, reconnu au nom de
+ * son `package.json` (liste `PAQUETS_PARC`), qui ne le declare pas est refuse.
+ * Les 29 sites du batiment ne sont pas dans la liste et ne le declarent pas :
+ * la mesure s'y tait, leur rendu ne change pas.
+ *
+ * Un creneau de rappel propose comme OPTION d'un champ de formulaire
+ * (`<option>`, `<SelectItem>`) est un choix du visiteur, pas un horaire
+ * d'appel : il est permis (decision du 03.11). Le meme horaire ecrit dans le
+ * texte reste refuse.
  * Le pied est tout composant dont le nom dit « footer » ou qui monte
  * `<footer` ; le contact, toute page dont le nom dit « contact » ou « kontakt ».
  */
@@ -420,12 +428,35 @@ const HEURE = [
   /\.(openingHours|businessHours|hours|horaires|oeffnungszeiten)\b/,
 ];
 const ETIQUETTE_INTERVENTION = /[Ii]ntervention|Einsatz|HorairesIntervention/;
+const OPTION_DE_CHAMP = /<(option|SelectItem)\b[^>]*>[^<]*<\/(option|SelectItem)>/g;
+export const PAQUETS_PARC = new Set(
+  [
+    "helvetic-garten", "helvetic-hochzeit", "helvetic-pool", "helvetic-reinigung", "helvetic-vermoegen",
+    "helvetic-whirlpool", "helvetique-demenagements", "helvetique-dentaire", "helvetique-elagage",
+    "helvetique-evenementiel", "helvetique-jardin", "helvetique-mariage", "helvetique-nettoyage",
+    "helvetique-patrimoine", "helvetique-piscine", "helvetique-spa",
+  ].map((n) => `@workspace/${n}`),
+);
 /* Une duree (« un entretien d'1h a 1h30 ») n'est pas un horaire. */
 const DUREE = /d['’]\s?\d{1,2}\s?h\d{0,2}\s?(à|a|-|–)\s?\d{1,2}\s?h\d{0,2}/g;
 
 export function mesurePiedContact(site, defauts) {
   const fConfig = path.join(site, "src/data/config.ts");
-  if (!fs.existsSync(fConfig) || !/\bligne\s*:/.test(lire(fConfig))) return;
+  const fPaquet = path.join(site, "package.json");
+  let nom = null;
+  try {
+    nom = JSON.parse(lire(fPaquet)).name ?? null;
+  } catch {
+    /* sans package.json lisible, le site n'est pas reconnu comme du parc */
+  }
+  const drapeau = fs.existsSync(fConfig) && /\bligne\s*:/.test(lire(fConfig));
+  if (!drapeau) {
+    if (PAQUETS_PARC.has(nom)) {
+      defauts.push(`effet:site du parc (${nom}) sans drapeau ligne dans src/data/config.ts : declarer ligne: true ou ligne: false`);
+    } else {
+      return;
+    }
+  }
 
   const fichiers = [];
   (function parcourir(dir) {
@@ -474,7 +505,7 @@ export function mesurePiedContact(site, defauts) {
 
     texte.split("\n").forEach((l, i) => {
       if (ETIQUETTE_INTERVENTION.test(l)) return;
-      const sansDuree = l.replace(DUREE, "");
+      const sansDuree = l.replace(DUREE, "").replace(OPTION_DE_CHAMP, "");
       if (HEURE.some((r) => r.test(sansDuree))) {
         defauts.push(`effet:pied/contact ${rel} ligne ${i + 1} : horaire d'appel « ${l.trim().slice(0, 60)} »`);
       }

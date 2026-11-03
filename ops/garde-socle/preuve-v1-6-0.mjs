@@ -16,6 +16,9 @@
  *      hors `telephone()`, une icone de telephone sur un lien qui n'appelle
  *      pas et un horaire d'appel ; sans drapeau `ligne` (batiment), elle se
  *      tait. L'ancienne garde ne voyait aucun des trois.
+ *   7. Le drapeau `ligne` est obligatoire sur un paquet du parc ; un creneau
+ *      de rappel propose comme option d'un champ est permis, le meme horaire
+ *      ecrit dans le texte reste refuse.
  *
  * Aucun reseau hors npm, aucun site reel : des doublures et des dossiers jetables.
  *
@@ -207,7 +210,7 @@ function gardeSite(version, fichiers) {
   fs.writeFileSync(path.join(site, "scripts/socle-manifeste.json"), JSON.stringify({ fichiers: [] }));
   fs.copyFileSync(path.join(version, "ops/garde-socle/verifier.mjs"), path.join(site, "scripts/garde-socle.mjs"));
   const r = spawnSync("node", ["scripts/garde-socle.mjs"], { cwd: site, encoding: "utf8" });
-  return `${r.stdout}${r.stderr}`.split("\n").filter((l) => l.includes("pied/contact"));
+  return `${r.stdout}${r.stderr}`.split("\n").filter((l) => l.includes("pied/contact") || l.includes("drapeau ligne"));
 }
 const CONFIG_PARC = 'export const SITE_CONFIG = { name: "Site", phone: "", ligne: false };';
 const PIED_FAUTIF = `import { Phone, Mail } from "lucide-react";
@@ -252,6 +255,35 @@ const batiment = gardeSite(actuel, { ...fautif, "src/data/config.ts": 'export co
 constat(batiment.length === 0, "garde, batiment (sans drapeau ligne) : mesure eteinte, rien ne change");
 const vieuxVu = gardeSite(ancien, fautif);
 constat(vieuxVu.length === 0, `contre-epreuve ${refAncienne} : l'ancienne garde laisse passer les trois defauts du pied et du contact`);
+
+/* 7. Drapeau obligatoire au parc, creneaux de rappel d'un champ. */
+const PAQUET = (nom) => JSON.stringify({ name: `@workspace/${nom}` });
+const CONFIG_SANS = 'export const SITE_CONFIG = { name: "Site", phone: "" };';
+const parcSans = gardeSite(actuel, { "package.json": PAQUET("helvetique-jardin"), "src/data/config.ts": CONFIG_SANS });
+constat(parcSans.some((l) => /site du parc \(@workspace\/helvetique-jardin\) sans drapeau ligne/.test(l)), "garde : paquet du parc sans drapeau ligne, refuse");
+const parcAvec = gardeSite(actuel, { "package.json": PAQUET("helvetique-jardin"), "src/data/config.ts": CONFIG_PARC });
+constat(parcAvec.length === 0, "garde : paquet du parc avec ligne: false, accepte");
+const batSans = gardeSite(actuel, { "package.json": PAQUET("helvetique-plomberie"), "src/data/config.ts": CONFIG_SANS, "src/components/layout/Footer.tsx": PIED_FAUTIF });
+constat(batSans.length === 0, "garde : paquet du batiment sans drapeau, mesure eteinte");
+constat(gardeSite(ancien, { "package.json": PAQUET("helvetique-jardin"), "src/data/config.ts": CONFIG_SANS }).length === 0,
+  `contre-epreuve ${refAncienne} : l'ancienne garde accepte un paquet du parc sans drapeau`);
+const CRENEAUX = `export default function Contact() {
+  return (
+    <form>
+      <select name="creneau"><option value="matin">Matin (8h-12h)</option></select>
+      <SelectItem value="soir">Soir (17h–19h)</SelectItem>
+    </form>
+  );
+}`;
+const TEXTE_HORAIRE = "export default function Contact() {\n  return <p>Rappel le matin (8h-12h)</p>;\n}";
+const avecCreneaux = { "package.json": PAQUET("helvetique-jardin"), "src/data/config.ts": CONFIG_PARC, "src/pages/Contact.tsx": CRENEAUX };
+constat(gardeSite(actuel, avecCreneaux).length === 0, "garde : creneaux de rappel en options d'un champ, acceptes");
+constat(gardeSite(actuel, { ...avecCreneaux, "src/pages/Contact.tsx": TEXTE_HORAIRE }).some((l) => /ligne 2 : horaire d'appel/.test(l)),
+  "garde : le meme creneau ecrit dans le texte, refuse");
+const avantCreneaux = extraire("f4ea14f");
+constat(gardeSite(avantCreneaux, avecCreneaux).length === 2, "contre-epreuve f4ea14f : la mesure 7 d'avant refusait les deux options");
+constat(gardeSite(ancien, { ...avecCreneaux, "src/pages/Contact.tsx": TEXTE_HORAIRE }).length === 0,
+  `contre-epreuve ${refAncienne} : l'ancienne garde laisse passer l'horaire ecrit`);
 
 fs.rmSync(tmp, { recursive: true, force: true });
 if (echecs > 0) {
