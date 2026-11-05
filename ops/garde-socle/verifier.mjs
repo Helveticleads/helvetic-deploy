@@ -527,7 +527,7 @@ export function mesurePiedContact(site, defauts) {
  *     d'appel « Lun-ven 10h-19h » sont affiches dans l'en-tete, dans la barre
  *     collante du bas et sur la page contact ;
  *   - site DE (`langue: "de"`) : aucun numero, aucun lien `tel:`, aucune icone
- *     de telephone, aucun « Anrufen », aucun « erreichbar » au sens de
+ *     de telephone, aucun « Anruf » / « anrufen » / « Rückruf », aucun « erreichbar » au sens de
  *     joignable par telephone. Horaires d'intervention seulement.
  *
  * La regle se lit sur les PAGES CONSTRUITES : c'est la que le visiteur la voit,
@@ -540,7 +540,32 @@ export function mesurePiedContact(site, defauts) {
  * Les sites du parc ne sont pas concernes : leur regle est le drapeau `ligne`.
  */
 const HORAIRES_APPEL = /lun\w*\.?\s*(-|–|à|a|au)\s*ven\w*\.?\s*10\s*h(00)?\s*(-|–|à|a)\s*19\s*h/i;
-const ANRUFEN = /\banrufen\b/i;
+/* « anrufen », et depuis le 05.11 « Anruf », « Anrufe », « Rückruf » : tout appel vers l'entreprise. */
+const ANRUF = /(anruf\w*|rückruf\w*)/i;
+/*
+ * Exception nommee (Frederic, 05.11) : le champ du formulaire qui demande le
+ * numero DU CLIENT pour le rappeler. C'est son numero, pas le notre : le
+ * `<label>` qui porte « Telefonnummer » sort du texte lu par la regle Anruf.
+ */
+export const EXCEPTION_ANRUF = {
+  sens: "le libelle du champ Telefonnummer du formulaire, le numero du client",
+  exemple: "Telefonnummer für den Rückruf",
+};
+
+function sansChampTelefonnummer(html) {
+  let out = "";
+  let i = 0;
+  for (;;) {
+    const debut = html.indexOf("<label", i);
+    if (debut < 0) break;
+    const fin = html.indexOf("</label>", debut);
+    if (fin < 0) break;
+    const bloc = html.slice(debut, fin + 8);
+    out += html.slice(i, debut) + (/Telefonnummer/i.test(bloc) ? " " : bloc);
+    i = fin + 8;
+  }
+  return out + html.slice(i);
+}
 const ERREICHBAR = /erreichbar\w*/gi;
 /*
  * « erreichbar » sans rapport avec le telephone : exceptions nommees UNE PAR
@@ -704,8 +729,9 @@ export function mesureTelephonePages(site, dossierPages, defauts) {
       if (/href="tel:/i.test(html)) noter("lien tel: sur un site DE", page);
       if (/class="[^"]*\blucide-phone/i.test(html)) noter("icone de telephone sur un site DE", page);
       const texte = texteVisible(html);
-      for (const a of texte.matchAll(new RegExp(ANRUFEN.source, "gi"))) {
-        noter("« Anrufen » sur un site DE", page, texte.slice(Math.max(0, a.index - 50), a.index + 40).trim());
+      const texteSansChamp = texteVisible(sansChampTelefonnummer(html));
+      for (const a of texteSansChamp.matchAll(new RegExp(ANRUF.source, "gi"))) {
+        noter("« Anruf, anrufen, Rückruf » sur un site DE", page, texteSansChamp.slice(Math.max(0, a.index - 50), a.index + 40).trim());
       }
       for (const m of texte.matchAll(ERREICHBAR)) {
         const debut = Math.max(0, m.index - 80);
