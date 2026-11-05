@@ -1,6 +1,6 @@
 {
   "socle": "batiment",
-  "version": 4,
+  "version": 5,
   "note": "Empreintes du contenu normalise (zones libres retirees). Refaire avec: node ops/garde-socle/manifeste.mjs",
   "fichiers": [
     {
@@ -11,7 +11,7 @@
     {
       "source": "src/components/layout/StickyMobileCTA.tsx",
       "chemin": "src/components/layout/StickyMobileCTA.tsx",
-      "empreinte": "f3b9e33af520ea87d7d1a726a3a8664cde476ac03dd491c3ca3371c29e815a81"
+      "empreinte": "2befca56d69527d459dd6a1a8c829f8142f9a03f52710e6f432381ff9852233e"
     },
     {
       "source": "src/components/socle/CanalWhatsapp.tsx",
@@ -62,7 +62,7 @@
     {
       "source": "../../ops/garde-socle/verifier.mjs",
       "chemin": "scripts/garde-socle.mjs",
-      "empreinte": "694fd6dded877279e0a219ccaf22d4bd9646cbfded4b091215fab3b0d50166ce"
+      "empreinte": "42e9ee97e524029ec25846347197554d38e22b3105f7db5d8879c55c86e22379"
     }
   ]
 }

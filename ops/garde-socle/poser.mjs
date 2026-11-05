@@ -158,11 +158,12 @@ fs.writeFileSync(
 console.log("  pose scripts/socle-manifeste.json");
 
 console.log(`\n${poses} fichiers poses sur ${path.basename(site)}.`);
-console.log("\nIl reste quatre gestes a la main, sur des fichiers que le socle ne possede pas :");
+console.log("\nIl reste cinq gestes a la main, sur des fichiers que le socle ne possede pas :");
 console.log("  1. ajouter phoneMention a src/data/config.ts ;");
 console.log("  2. monter BlocConsentement dans les formulaires du site ;");
 console.log("  3. remplacer l'ecriture de la 404 par rendre404 dans scripts/prerender-content.mjs ;");
-console.log("  4. ajouter `node ./scripts/garde-socle.mjs` en tete du script build.");
+console.log("  4. ajouter `node ./scripts/garde-socle.mjs` en tete du script build ;");
+console.log("  5. ajouter `node ./scripts/garde-socle.mjs --pages dist/public` en fin du script build.");
 console.log("\nPuis : node scripts/garde-socle.mjs depuis le site.");
 
 if (refuses.length > 0) {

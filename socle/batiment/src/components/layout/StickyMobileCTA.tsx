@@ -8,18 +8,32 @@
  *
  * Elle est cachee a partir de `lg`, la ou la barre d'en-tete porte deja le
  * numero ou le bouton « Appeler ».
+ *
+ * Regle du telephone du batiment (Frederic, 05.11.2026) : des que le numero
+ * est renseigne, il est ECRIT en clair au-dessus des boutons, avec sa mention
+ * (les horaires d'appel, « Lun-ven 10 h - 19 h »). Vide, ou `ligne: false`,
+ * rien de telephonique n'est rendu.
  */
 import { Link } from "wouter";
 import { FileText, Phone } from "lucide-react";
 import { CanalWhatsapp } from "@/components/socle/CanalWhatsapp";
-import { SITE_CONFIG } from "@/data/config";
+import { SITE_CONFIG, phoneMention } from "@/data/config";
 import { CHEMIN_CONTACT, TEXTES, telephone } from "@/data/navigation";
 
 export function StickyMobileCTA() {
   const tel = telephone();
+  const mention = phoneMention();
 
   return (
     <div className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-card/95 p-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] backdrop-blur lg:hidden">
+      {tel ? (
+        <p className="mb-2 text-center text-xs leading-tight">
+          <a href={tel} className="font-semibold hover:underline">
+            {SITE_CONFIG.phone}
+          </a>
+          {mention ? <span className="text-muted-foreground"> · {mention}</span> : null}
+        </p>
+      ) : null}
       <div className="flex gap-2">
         {tel ? (
           <a
