@@ -12,11 +12,11 @@
 import { Link } from "wouter";
 import { FileText, Phone } from "lucide-react";
 import { CanalWhatsapp } from "@/components/socle/CanalWhatsapp";
-import { SITE_CONFIG, phoneHref } from "@/data/config";
-import { CHEMIN_CONTACT, TEXTES } from "@/data/navigation";
+import { SITE_CONFIG } from "@/data/config";
+import { CHEMIN_CONTACT, TEXTES, telephone } from "@/data/navigation";
 
 export function StickyMobileCTA() {
-  const tel = phoneHref();
+  const tel = telephone();
 
   return (
     <div className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-card/95 p-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] backdrop-blur lg:hidden">

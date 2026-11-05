@@ -1,17 +1,17 @@
 {
   "socle": "batiment",
-  "version": 3,
+  "version": 4,
   "note": "Empreintes du contenu normalise (zones libres retirees). Refaire avec: node ops/garde-socle/manifeste.mjs",
   "fichiers": [
     {
       "source": "src/components/layout/Header.tsx",
       "chemin": "src/components/layout/Header.tsx",
-      "empreinte": "1ed9043defa109149f9c74dcb6566d322748bd078d3c165c3805a6110639a943"
+      "empreinte": "21053a9693d86c11d6c2e4a31f7b7fa0ef053188841b024813d7ca46adbe7bd1"
     },
     {
       "source": "src/components/layout/StickyMobileCTA.tsx",
       "chemin": "src/components/layout/StickyMobileCTA.tsx",
-      "empreinte": "032390856a613d454d0ef200bf63ef04c72ea8dbdc7642f86bd6c0b2caa602c4"
+      "empreinte": "f3b9e33af520ea87d7d1a726a3a8664cde476ac03dd491c3ca3371c29e815a81"
     },
     {
       "source": "src/components/socle/CanalWhatsapp.tsx",
@@ -29,6 +29,11 @@
       "empreinte": "30acb8b505a16c15e92c48955a79df3dcf41af6c7848fc50b79162ce09f50241"
     },
     {
+      "source": "src/components/socle/HorairesIntervention.tsx",
+      "chemin": "src/components/socle/HorairesIntervention.tsx",
+      "empreinte": "c95fd17959a966648f4df5ed706cf7e98f4c8c9e5619799e6c83bddb6bc7bf45"
+    },
+    {
       "source": "src/components/HeroForm.tsx",
       "chemin": "src/components/HeroForm.tsx",
       "optionnel": true,
@@ -37,7 +42,7 @@
     {
       "source": "src/data/navigation.ts",
       "chemin": "src/data/navigation.ts",
-      "empreinte": "7917ddf95af2231eb6018151102878e93426cf5cabd12a64c8664b0f2fb6fe85"
+      "empreinte": "30faffb7690ade7f169621bdd685e2ce80f4779be055877f68defdd381fe5008"
     },
     {
       "source": "src/lib/api.ts",
@@ -57,7 +62,7 @@
     {
       "source": "../../ops/garde-socle/verifier.mjs",
       "chemin": "scripts/garde-socle.mjs",
-      "empreinte": "f2838e259525863b819b1c70f701b78e3c51e55e11f3221e1ca4f5fee3780e99"
+      "empreinte": "694fd6dded877279e0a219ccaf22d4bd9646cbfded4b091215fab3b0d50166ce"
     }
   ]
 }

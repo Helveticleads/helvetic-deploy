@@ -25,6 +25,7 @@ const FICHIERS = [
   { source: "src/components/socle/CanalWhatsapp.tsx", chemin: "src/components/socle/CanalWhatsapp.tsx" },
   { source: "src/components/socle/BlocConsentement.tsx", chemin: "src/components/socle/BlocConsentement.tsx" },
   { source: "src/components/socle/reserve-widget.css", chemin: "src/components/socle/reserve-widget.css" },
+  { source: "src/components/socle/HorairesIntervention.tsx", chemin: "src/components/socle/HorairesIntervention.tsx" },
   /*
    * OPTIONNEL. Le formulaire d'accueil en etapes n'existe pas partout : la
    * famille Replit en a un autre, bati sur `src/data/form-steps.ts` et non sur
@@ -53,7 +54,7 @@ const fichiers = FICHIERS.map((f) => {
 
 const manifeste = {
   socle: "batiment",
-  version: 3,
+  version: 4,
   note:
     "Empreintes du contenu normalise (zones libres retirees). " +
     "Refaire avec: node ops/garde-socle/manifeste.mjs",

@@ -42,6 +42,7 @@ const DOUBLURES = {
   "@/data/navigation": `export const CHEMIN_CONTACT = "/contact";
     export const NAV = [{ libelle: "Services", href: "/services" }];
     export const NAV_TELEPHONE = NAV;
+    export const telephone = () => null;
     export const TEXTES = { accueil: "Accueil", navigation: "Navigation", navigationRepliee: "Repliee", appeler: "Appeler",
       devis: "Devis gratuit", devisLong: "Demander un devis", fermerMenu: "Fermer le menu", ouvrirMenu: "Ouvrir le menu", whatsapp: "WhatsApp" };`,
   "@/data/config": `export const SITE_CONFIG = { name: "Site", phone: "" }; export const phoneHref = () => null; export const phoneMention = () => null;`,
