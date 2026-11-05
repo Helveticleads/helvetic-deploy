@@ -47,6 +47,23 @@ a `ops/garde-socle/verifier.mjs`, qui tourne dans le build de chaque site.
 | Renseigne, il parait dans l'en-tete, le bouton « Appeler », le menu replie, la barre collante du bas, le pied, la page contact et le `telephone` du JSON-LD | garde socle, empreinte des gabarits |
 | Le `@type` du JSON-LD reste gele | charte editoriale, revue humaine |
 
+**La regle du telephone du batiment** (Frederic, 05.11.2026, v1.6.1). Elle se
+lit sur les PAGES CONSTRUITES, par la garde lancee en fin de build
+(`node ./scripts/garde-socle.mjs --pages dist/public`, mesure 8) :
+
+| Ce qu'il faut | Verifie par |
+|---|---|
+| Site FR, numero renseigne : le numero ET les horaires d'appel « Lun-ven 10h-19h » (`phoneMention`) dans l'en-tete de chaque page | garde des pages |
+| ... et dans la barre collante du bas, qui ECRIT le numero et ses horaires au-dessus des boutons | garde des pages ; empreinte de `StickyMobileCTA.tsx` ; `preuve-v1-6-1.mjs` |
+| ... et dans le CONTENU de la page contact (`contact/index.html`), qui appartient au site | garde des pages |
+| Site DE (`langue: "de"`) : `phone: ""` | garde socle, mesure d'effet |
+| Site DE : aucun lien `tel:`, aucune icone de telephone, aucun « anrufen », aucun « erreichbar » au sens de joignable par telephone, sur aucune page | garde des pages |
+| Les usages de « erreichbar » sans rapport avec le telephone (« gut erreichbar mit dem ÖV ») : exceptions NOMMEES une par une dans `EXCEPTIONS_ERREICHBAR` de `ops/garde-socle/verifier.mjs`, chacune avec son sens et un exemple | garde des pages ; `preuve-v1-6-1.mjs` |
+| Le build du site lance la garde des pages, apres le prerendu | garde socle, mesure d'effet |
+
+Les sites du parc ne sont pas concernes : leur regle est le drapeau `ligne`
+(`docs/SOCLE-PARC.md`).
+
 ### 1.3 Le formulaire
 
 | Ce qu'il faut | Verifie par |
@@ -125,9 +142,11 @@ Le script copie les fichiers du manifeste a leur place, ecrit
 2. brancher `BlocConsentement` dans les formulaires du site ;
 3. remplacer l'appel a l'ancienne ecriture de la 404 par `rendre404` dans
    `scripts/prerender-content.mjs` ;
-4. ajouter la garde en tete de `pnpm build`.
+4. ajouter la garde en tete de `pnpm build` ;
+5. depuis la v1.6.1 : ajouter `&& node ./scripts/garde-socle.mjs --pages dist/public`
+   en FIN de `pnpm build`, apres le prerendu (regle du telephone, § 1.2).
 
-Ces quatre gestes sont propres au site parce qu'ils touchent des fichiers que
+Ces cinq gestes sont propres au site parce qu'ils touchent des fichiers que
 le socle ne possede pas. La garde les verifie ensuite par ses mesures d'effet.
 
 ### 2.2 Changer le socle
@@ -141,7 +160,7 @@ Un socle modifie sans recopie rend les sites ROUGES au prochain build : c'est
 voulu. La garde dit quel fichier et quelle ligne.
 
 **La cle `version` de `MANIFESTE.json` augmente de 1 a chaque version publiee.**
-Decision de Frederic du 02.11.2026. Elle vaut 2 avec la v1.4.0, 3 avec la v1.5.0, 4 avec la v1.6.0. Elle s'ecrit dans
+Decision de Frederic du 02.11.2026. Elle vaut 2 avec la v1.4.0, 3 avec la v1.5.0, 4 avec la v1.6.0, 5 avec la v1.6.1. Elle s'ecrit dans
 `ops/garde-socle/manifeste.mjs`, avant le tag. Un site non concerne par une
 version garde la valeur de sa derniere recopie : la garde ne lit pas cette cle.
 

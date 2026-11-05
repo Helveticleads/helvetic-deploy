@@ -37,3 +37,5 @@ jobs:
         run: node ops/garde-socle/preuve-widget.mjs v1.4.0
       - name: Drapeau ligne, libelle du bouton, horaire etiquete, six emplacements, greffe par nom
         run: node ops/garde-socle/preuve-v1-6-0.mjs v1.5.0
+      - name: Regle du telephone du batiment, barre du bas et garde des pages
+        run: node ops/garde-socle/preuve-v1-6-1.mjs v1.6.0

@@ -361,6 +361,7 @@ function mesuresEffet(site, defauts) {
   }
 
   mesurePiedContact(site, defauts);
+  mesureTelephoneSource(site, defauts);
 
   /* 5. La politique de securite du contenu porte les deux origines du widget. */
   const fCsp = path.join(site, "deploy/csp-batiment.conf");
@@ -519,6 +520,235 @@ export function mesurePiedContact(site, defauts) {
   }
 }
 
+/*
+ * 8. La regle du telephone du BATIMENT (Frederic, 05.11.2026).
+ *
+ *   - site FR : des que le numero est renseigne, le numero ET les horaires
+ *     d'appel « Lun-ven 10h-19h » sont affiches dans l'en-tete, dans la barre
+ *     collante du bas et sur la page contact ;
+ *   - site DE (`langue: "de"`) : aucun numero, aucun lien `tel:`, aucune icone
+ *     de telephone, aucun « Anrufen », aucun « erreichbar » au sens de
+ *     joignable par telephone. Horaires d'intervention seulement.
+ *
+ * La regle se lit sur les PAGES CONSTRUITES : c'est la que le visiteur la voit,
+ * et c'est la seule facon de couvrir le contenu propre a chaque site. Deux
+ * moitiés :
+ *   - dans la source (cette mesure) : le site DE ne declare aucun numero, et le
+ *     build du site lance la garde des pages (`garde-socle.mjs --pages
+ *     dist/public`) APRES le prerendu ;
+ *   - dans les pages (`mesureTelephonePages`, mode `--pages`).
+ * Les sites du parc ne sont pas concernes : leur regle est le drapeau `ligne`.
+ */
+const HORAIRES_APPEL = /lun\w*\.?\s*(-|–|à|a|au)\s*ven\w*\.?\s*10\s*h(00)?\s*(-|–|à|a)\s*19\s*h/i;
+const ANRUFEN = /\banrufen\b/i;
+const ERREICHBAR = /erreichbar\w*/gi;
+/*
+ * « erreichbar » sans rapport avec le telephone : exceptions nommees UNE PAR
+ * UNE (decision du 05.11). Chacune dit le sens, et ne couvre que sa tournure.
+ */
+export const EXCEPTIONS_ERREICHBAR = [
+  {
+    sens: "un organe ou un endroit accessible a la main (vanne, regard, ouverture)",
+    motif: /\b(Hauptschalter|Absperrventile?|Absperrungen|Wartungsöffnungen|Feuerstätte|Abdeckung|Kanten|Scharnierbereiche|Technikräumen|Grundstücksnetz|Zugang|Abläufe|Dachraum|Eingänge|Route)\b[^.?!]{0,60}?\berreichbar(?!keit)/gi,
+    exemple: "Hauptschalter aus, wenn gefahrlos erreichbar, sonst warten.",
+  },
+  {
+    sens: "une partie accessible, adjectif devant le nom (zone, conduite, siphon)",
+    motif: /\berreichbar(e|en|er)\s+(Bereich\w*|Abschnitte|Untergrund|Siphon|Ablauf|Gegenstände)\b/gi,
+    exemple: "Der Fachbetrieb repariert erreichbare Abschnitte.",
+  },
+  {
+    sens: "a portee de la main, ou hors de portee",
+    motif: /\b(von aussen|vom Boden aus|für Kinder und Haustiere)\s+erreichbar\b/gi,
+    exemple: "Die Kasse ist von aussen erreichbar.",
+  },
+  {
+    sens: "un lieu atteint par la route ou le rail",
+    motif: /\b(per Standseilbahn|mit dem Auto|mit dem ÖV|mit dem öffentlichen Verkehr|zu Fuss)\s+erreichbar(e|en|er)?\b|\bnach Erreichbarkeit\.\s*(Bitte\s+)?(Lage|Zufahrt)\b/gi,
+    exemple: "Ja, nach Erreichbarkeit. Zufahrt bitte im Formular nennen.",
+  },
+  {
+    sens: "un resultat atteignable (une valeur, un delai, une epaisseur)",
+    motif: /\b\d+\s*(bis\s*\d+\s*)?(dB|Jahre)\s+erreichbar\b|\bDämmschicht\s+erreichbar\b|\bStichtag\s+erreichbar\b|\bmit Hausmitteln nicht erreichbar\b|\berreichbar(e|er)\s+(Slot|Entscheidungsstruktur)\b/gi,
+    exemple: "Eine Reduktion um 10 bis 40 dB erreichbar.",
+  },
+  {
+    sens: "des documents ou un endroit a atteindre",
+    motif: /\bErreichbarkeit (von Unterlagen|der Stelle)\b/gi,
+    exemple: "Nutzung eines Raums oder die Erreichbarkeit von Unterlagen.",
+  },
+  {
+    sens: "joignable PAR LE FORMULAIRE, le canal est nomme dans la tournure",
+    motif: /\b(per|über das)\s+Formular\s+erreichbar(?!keit)\b|\bErreichbarkeit per Formular\b/gi,
+    exemple: "Kostenloser KV, per Formular erreichbar.",
+  },
+];
+
+/** Vrai si une exception nommee couvre l'occurrence placee a `position` du contexte. */
+function exceptionCouvre(contexte, position) {
+  return EXCEPTIONS_ERREICHBAR.some((x) =>
+    [...contexte.matchAll(new RegExp(x.motif.source, "gi"))].some((m) => m.index <= position && position < m.index + m[0].length),
+  );
+}
+
+function estDuParc(site) {
+  let nom = null;
+  try {
+    nom = JSON.parse(lire(path.join(site, "package.json"))).name ?? null;
+  } catch {
+    /* sans package.json lisible, le site n'est pas reconnu comme du parc */
+  }
+  const fConfig = path.join(site, "src/data/config.ts");
+  const config = fs.existsSync(fConfig) ? lire(fConfig) : "";
+  const domaine = (config.match(/\bdomain:\s*["']([^"']+)["']/) ?? [])[1]?.trim().toLowerCase().replace(/^www\./, "") ?? null;
+  return PAQUETS_PARC.has(nom) || DOMAINES_PARC.has(domaine);
+}
+
+/** Ce que la regle du telephone attend du site, lu dans sa configuration. */
+export function regleTelephone(site) {
+  const fConfig = path.join(site, "src/data/config.ts");
+  const config = fs.existsSync(fConfig) ? lire(fConfig) : "";
+  const langue = /\blangue:\s*["']de["']/.test(config) ? "de" : "fr";
+  const numero = ((config.match(/\bphone:\s*"([^"]*)"/) ?? [])[1] ?? "").trim();
+  const ligne = !/\bligne\s*:\s*false\b/.test(config);
+  return { langue, numero, ligne, parc: estDuParc(site) };
+}
+
+export function mesureTelephoneSource(site, defauts) {
+  const regle = regleTelephone(site);
+  if (regle.parc) return;
+  if (regle.langue === "de" && regle.numero) {
+    defauts.push(`effet:site DE avec un numero ("${regle.numero}") : la regle du batiment n'en veut aucun, phone: ""`);
+  }
+  let build = "";
+  try {
+    build = JSON.parse(lire(path.join(site, "package.json"))).scripts?.build ?? "";
+  } catch {
+    /* sans package.json lisible, le defaut est dit juste en dessous */
+  }
+  const etapes = build.split("&&").map((s) => s.trim());
+  const iPages = etapes.findIndex((s) => /garde-socle\.mjs\s+--pages\b/.test(s));
+  const iPrerendu = etapes.findIndex((s) => /prerender/.test(s));
+  if (iPages < 0) {
+    defauts.push("effet:le build du site ne lance pas la garde des pages construites : ajouter `node ./scripts/garde-socle.mjs --pages dist/public` en fin de script build");
+  } else if (iPrerendu >= 0 && iPages < iPrerendu) {
+    defauts.push("effet:la garde des pages construites tourne avant le prerendu : la placer apres");
+  }
+}
+
+function texteVisible(html) {
+  const metas = [...html.matchAll(/<meta\b[^>]*\bcontent="([^"]*)"[^>]*>/gi)]
+    .filter((m) => /(name|property)="(description|og:description|og:title|twitter:description|twitter:title)"/i.test(m[0]))
+    .map((m) => m[1]);
+  const corps = html
+    .replace(/<(script|style|noscript)\b[^>]*>[\s\S]*?<\/\1>/gi, " ")
+    .replace(/<[^>]+>/g, " ");
+  return [corps, ...metas]
+    .join(" ")
+    .replace(/&nbsp;|&#160;|&#xa0;/gi, " ")
+    .replace(/&#x27;|&#39;|&apos;/gi, "'")
+    .replace(/&amp;/g, "&")
+    .replace(/[  ]/g, " ")
+    .replace(/\s+/g, " ");
+}
+
+function bloc(html, debut, fin) {
+  const i = html.indexOf(debut);
+  if (i < 0) return null;
+  const j = html.indexOf(fin, i);
+  return html.slice(i, j < 0 ? html.length : j + fin.length);
+}
+
+/* La barre collante du bas : la classe de sa racine, tenue par l'empreinte. */
+const RACINE_BARRE_BAS = "fixed inset-x-0 bottom-0 z-40";
+
+function barreBas(html) {
+  const i = html.indexOf(RACINE_BARRE_BAS);
+  if (i < 0) return null;
+  const j = html.indexOf("sr-only", i);
+  return html.slice(i, j < 0 ? html.length : j);
+}
+
+function pagesHtml(dir) {
+  const out = [];
+  (function parcourir(d) {
+    for (const e of fs.readdirSync(d, { withFileTypes: true })) {
+      const p = path.join(d, e.name);
+      if (e.isDirectory()) parcourir(p);
+      else if (e.name.endsWith(".html")) out.push(p);
+    }
+  })(dir);
+  return out.sort();
+}
+
+export function mesureTelephonePages(site, dossierPages, defauts) {
+  const regle = regleTelephone(site);
+  if (regle.parc) return;
+  if (!fs.existsSync(dossierPages)) {
+    defauts.push(`pages:${dossierPages} introuvable : lancer la garde des pages apres le build`);
+    return;
+  }
+  const constats = new Map();
+  const noter = (cle, page, detail) => {
+    if (!constats.has(cle)) constats.set(cle, []);
+    constats.get(cle).push(detail ? `${page} « ${detail} »` : page);
+  };
+  const numeroNormal = regle.numero.replace(/\s+/g, " ");
+  const pages = pagesHtml(dossierPages);
+
+  for (const p of pages) {
+    const page = path.relative(dossierPages, p);
+    const html = lire(p);
+
+    if (regle.langue === "de") {
+      if (/href="tel:/i.test(html)) noter("lien tel: sur un site DE", page);
+      if (/class="[^"]*\blucide-phone/i.test(html)) noter("icone de telephone sur un site DE", page);
+      const texte = texteVisible(html);
+      for (const a of texte.matchAll(new RegExp(ANRUFEN.source, "gi"))) {
+        noter("« Anrufen » sur un site DE", page, texte.slice(Math.max(0, a.index - 50), a.index + 40).trim());
+      }
+      for (const m of texte.matchAll(ERREICHBAR)) {
+        const debut = Math.max(0, m.index - 80);
+        const contexte = texte.slice(debut, m.index + m[0].length + 40);
+        if (exceptionCouvre(contexte, m.index - debut)) continue;
+        noter("« erreichbar » au sens du telephone sur un site DE (ou exception a nommer)", page, contexte.trim());
+      }
+      continue;
+    }
+
+    if (!regle.numero || !regle.ligne) continue;
+    const entete = bloc(html, "<header", "</header>");
+    if (!entete) continue; /* une page sans en-tete n'est pas une page du site (verification Bing, etc.) */
+    const tEntete = texteVisible(entete);
+    if (!tEntete.includes(numeroNormal)) noter("en-tete sans le numero", page);
+    if (!HORAIRES_APPEL.test(tEntete)) noter("en-tete sans les horaires d'appel", page);
+    const barre = barreBas(html);
+    if (!barre) noter("barre collante du bas absente", page);
+    else {
+      const tBarre = texteVisible(barre);
+      if (!tBarre.includes(numeroNormal)) noter("barre collante du bas sans le numero", page);
+      if (!HORAIRES_APPEL.test(tBarre)) noter("barre collante du bas sans les horaires d'appel", page);
+    }
+    if (/^(contact|kontakt)[\\/]index\.html$/.test(page)) {
+      const i = html.indexOf("</header>");
+      const j = html.indexOf("<footer", i);
+      const tContenu = texteVisible(html.slice(i, j < 0 ? html.length : j));
+      if (!tContenu.includes(numeroNormal)) noter("page contact sans le numero dans son contenu", page);
+      if (!HORAIRES_APPEL.test(tContenu)) noter("page contact sans les horaires d'appel dans son contenu", page);
+    }
+  }
+
+  if (regle.langue === "fr" && regle.numero && regle.ligne && !pages.some((p) => /^(contact|kontakt)[\\/]index\.html$/.test(path.relative(dossierPages, p)))) {
+    noter("page contact introuvable (contact/index.html)", "-");
+  }
+
+  const tout = process.env.GARDE_SOCLE_TOUT === "1";
+  for (const [cle, liste] of constats) {
+    defauts.push(`telephone:${cle} : ${liste.length} page(s)\n      ${liste.slice(0, tout ? liste.length : 8).join("\n      ")}${!tout && liste.length > 8 ? `\n      (+${liste.length - 8}, tout voir : GARDE_SOCLE_TOUT=1)` : ""}`);
+  }
+  return pages.length;
+}
+
 /* ------------------------------------------------------------------ */
 /* Programme                                                           */
 /* ------------------------------------------------------------------ */
@@ -577,15 +807,33 @@ function principal() {
   const args = process.argv.slice(2);
   let site = ".";
   let reference = null;
+  let dossierPages = null;
   for (let i = 0; i < args.length; i += 1) {
     if (args[i] === "--reference") {
       reference = args[i + 1];
+      i += 1;
+    } else if (args[i] === "--pages") {
+      dossierPages = args[i + 1];
       i += 1;
     } else if (!args[i].startsWith("--")) {
       site = args[i];
     }
   }
   site = path.resolve(site);
+
+  /* Mode des pages construites : seulement la regle du telephone (mesure 8). */
+  if (dossierPages) {
+    const defauts = [];
+    const n = mesureTelephonePages(site, path.resolve(site, dossierPages), defauts);
+    if (defauts.length > 0) {
+      console.error(`GARDE_SOCLE_PAGES_FAIL ${defauts.length} defaut(s) sur ${path.basename(site)} :`);
+      for (const d of defauts) console.error(`  - ${d}`);
+      console.error("\nRegle du telephone du batiment : docs/SOCLE-BATIMENT.md, § 1.2, du depot helvetic-deploy.");
+      process.exit(1);
+    }
+    console.log(`GARDE_SOCLE_PAGES_OK regle du telephone tenue sur ${n ?? 0} page(s)`);
+    return;
+  }
 
   const cheminManifeste = fs.existsSync(path.join(site, "scripts/socle-manifeste.json"))
     ? path.join(site, "scripts/socle-manifeste.json")
