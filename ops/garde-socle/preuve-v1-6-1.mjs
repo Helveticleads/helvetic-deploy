@@ -191,7 +191,7 @@ const SITE_DE = (contenu) => ({
 });
 r = gardePages(actuel, SITE_DE("<p>Einsatz: Mo-Fr 7-18 Uhr. Offerte anfragen.</p>"));
 constat(r.code === 0, "pages DE conformes (horaire d'intervention) : vert");
-const ANRUF = "« Anruf, anrufen, Rückruf » sur un site DE";
+const ANRUF = "« Anruf, anrufen, rufen Sie an » sur un site DE";
 const ERREICHBAR_TEL = "« erreichbar » au sens du telephone";
 const mutationsDe = [
   ["lien tel:", "lien tel: sur un site DE", '<a href="tel:+41210000000">Ruf</a>'],
@@ -199,7 +199,8 @@ const mutationsDe = [
   ["anrufen", ANRUF, "<p>Jetzt anrufen</p>"],
   ["Anruf", ANRUF, "<p>Vom ersten Anruf bis zur Lösung.</p>"],
   ["Anrufe", ANRUF, "<p>Anrufe werden beantwortet.</p>"],
-  ["Rückruf", ANRUF, "<p>Rückruf anfordern</p>"],
+  ["Kundenanruf", ANRUF, "<p>Jeder Kundenanruf zählt.</p>"],
+  ["rufen Sie uns an", ANRUF, "<p>Rufen Sie uns an.</p>"],
   ["telefonisch erreichbar", ERREICHBAR_TEL, "<p>Wir sind telefonisch erreichbar.</p>"],
   ["Erreichbar Mo-Fr", ERREICHBAR_TEL, "<p>Erreichbar Mo-Fr 8-17 Uhr</p>"],
   /* Decision du 05.11 : ces tournures se reformulent, aucune exception ne les couvre. */
@@ -212,11 +213,21 @@ for (const [libelle, defaut, html] of mutationsDe) {
   r = gardePages(actuel, SITE_DE(html));
   constat(r.code === 1 && r.sortie.includes(defaut), `mutation DE « ${libelle} » : rouge`);
 }
-const CHAMP_CLIENT = '<form><label for="tel">Telefonnummer für den Rückruf</label><input id="tel" type="tel" name="telefon"></form>';
+/* Le rappel DU CLIENT par l'entreprise reste permis (Frederic, 05.11), consentement du socle compris. */
+const RAPPEL_CLIENT = [
+  ["Rückruf anfordern", "<p>Rückruf anfordern</p>"],
+  ["consentement du socle", "<label><input type=\"checkbox\"> Ich bin damit einverstanden, dass meine Anfrage an einen Fachbetrieb aus meiner Region weitergegeben wird und dieser mich dazu zurückruft. Meine Daten werden gemäss der Datenschutzerklärung bearbeitet.</label>"],
+  ["ruft Sie zurück", "<p>Ein Fachbetrieb aus Ihrer Region ruft Sie zurück.</p>"],
+];
+for (const [libelle, html] of RAPPEL_CLIENT) {
+  r = gardePages(actuel, SITE_DE(html));
+  constat(r.code === 0, `rappel du client « ${libelle} » : permis`);
+}
+const CHAMP_CLIENT = '<form><label for="tel">Telefonnummer (für den Anruf zurück)</label><input id="tel" type="tel" name="telefon"></form>';
 r = gardePages(actuel, SITE_DE(CHAMP_CLIENT));
 constat(r.code === 0, "exception nommee : le champ Telefonnummer du formulaire (le numero DU CLIENT) : permis");
-r = gardePages(actuel, SITE_DE(`${CHAMP_CLIENT}<p>Rückruf anfordern</p>`));
-constat(r.code === 1 && r.sortie.includes(ANRUF), "le meme Rückruf hors du champ Telefonnummer : rouge");
+r = gardePages(actuel, SITE_DE(`${CHAMP_CLIENT}<p>Für den Anruf zurück: Formular.</p>`));
+constat(r.code === 1 && r.sortie.includes(ANRUF), "le meme Anruf hors du champ Telefonnummer : rouge");
 const { EXCEPTIONS_ERREICHBAR } = await import(path.join(actuel, "ops/garde-socle/verifier.mjs"));
 for (const x of EXCEPTIONS_ERREICHBAR) {
   r = gardePages(actuel, SITE_DE(`<p>${x.exemple}</p>`));
