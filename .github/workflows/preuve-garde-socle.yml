@@ -43,3 +43,5 @@ jobs:
         run: node ops/garde-socle/preuve-v1-6-2.mjs v1.6.1
       - name: Case de consentement neutre, lien de confidentialite
         run: node ops/garde-socle/preuve-v1-6-3.mjs v1.6.2
+      - name: Seule la demande est gratuite, jamais le devis
+        run: node ops/garde-socle/preuve-v1-6-4.mjs v1.6.3

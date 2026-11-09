@@ -1029,6 +1029,22 @@ export function mesureTelephonePages(site, dossierPages, defauts) {
 /* Programme                                                           */
 /* ------------------------------------------------------------------ */
 
+/*
+ * Seule la DEMANDE est gratuite, jamais le devis (Frederic, 09.11, v1.6.4).
+ * Aucun fichier du socle, zones libres comprises, ne promet la gratuite du
+ * devis : « devis » suivi de « gratuit(s) », « kostenlos… » suivi de
+ * « Angebot(e) » ou de « Kostenvoranschlag », sans casse (motif ci-dessous).
+ * « Demande gratuite » et « Kostenlose Anfrage » passent.
+ */
+const DEVIS_GRATUIT = /(?<!\p{L})(?:devis\s+gratuits?|kostenlos\p{L}*\s+(?:Angebot\p{L}*|Kostenvoranschl\p{L}*))(?!\p{L})/giu;
+export function devisGratuits(texte) {
+  const trouves = [];
+  for (const m of texte.matchAll(DEVIS_GRATUIT)) {
+    trouves.push({ ligne: texte.slice(0, m.index).split("\n").length, texte: m[0] });
+  }
+  return trouves;
+}
+
 export function verifier({ site, manifeste, reference }) {
   const defauts = [];
   const vus = [];
@@ -1044,6 +1060,9 @@ export function verifier({ site, manifeste, reference }) {
       continue;
     }
     const texteCopie = lire(copie);
+    for (const g of devisGratuits(texteCopie)) {
+      defauts.push(`gratuite:${entree.chemin} ligne ${g.ligne} : « ${g.texte} » (seule la demande est gratuite, jamais le devis)`);
+    }
 
     if (reference) {
       const ref = path.join(reference, entree.source);
