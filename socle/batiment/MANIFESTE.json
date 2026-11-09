@@ -62,7 +62,7 @@
     {
       "source": "../../ops/garde-socle/verifier.mjs",
       "chemin": "scripts/garde-socle.mjs",
-      "empreinte": "175b4804bb1ae589c499fb23103b7b21d800f3f1ba5077c85c1c3c32781c444a"
+      "empreinte": "5269af33933cc11a58a277af71b80c13a07b9c58675e6ed869d78233c6c37a69"
     }
   ]
 }

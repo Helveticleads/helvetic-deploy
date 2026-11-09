@@ -86,21 +86,23 @@ async function rendre(version, langue) {
   require(f);
   return globalThis.__html;
 }
-const texte = (html) => html.replace(/<[^>]+>/g, "").replace(/&#x27;/g, "'").replace(/\s+/g, " ").trim();
 const span = (html) => (html.match(/<span id="socle-consent-aide"[^>]*>[\s\S]*?<\/span>/) ?? [""])[0];
 
-/* 1. Le texte decide, au mot pres. */
+/*
+ * 1. Le texte decide, au mot pres. On compare le balisage rendu tel quel au
+ * balisage attendu (aucun nettoyage du HTML) : la phrase, puis le lien du site
+ * qui porte les derniers mots, puis le point.
+ */
 const ATTENDU = {
-  fr: "J’accepte que mes données soient utilisées pour traiter ma demande. En savoir plus dans la politique de confidentialité.",
-  de: "Ich bin einverstanden, dass meine Angaben zur Bearbeitung meiner Anfrage verwendet werden. Mehr dazu in der Datenschutzerklärung.",
+  fr: `<span id="socle-consent-aide">J’accepte que mes données soient utilisées pour traiter ma demande. En savoir plus dans la ${LIENS.fr}.</span>`,
+  de: `<span id="socle-consent-aide">Ich bin einverstanden, dass meine Angaben zur Bearbeitung meiner Anfrage verwendet werden. Mehr dazu in der ${LIENS.de}.</span>`,
 };
 const rendus = {};
 for (const langue of ["fr", "de"]) {
   rendus[langue] = await rendre(actuel, langue);
-  const t = texte(span(rendus[langue]));
-  constat(t === ATTENDU[langue], `texte ${langue} au mot pres : « ${t} »`);
+  constat(span(rendus[langue]) === ATTENDU[langue], `texte ${langue} au mot pres, lien du site compris`);
   constat(/<a href="[^"]+">[^<]+<\/a>\.<\/span>/.test(span(rendus[langue])), `texte ${langue} : le lien porte les derniers mots`);
-  const vieux = texte(span(await rendre(ancien, langue)));
+  const vieux = span(await rendre(ancien, langue));
   constat(vieux !== ATTENDU[langue] && /Fachbetrieb|professionnel/.test(vieux), `contre-epreuve ${refAncienne} ${langue} : l'ancien texte nommait le professionnel`);
 }
 
@@ -121,8 +123,8 @@ function garde(verifier, langue, bloc) {
   const r = spawnSync("node", [path.join(verifier, "ops/garde-socle/verifier.mjs"), d, "--pages", "dist/public"], { encoding: "utf8" });
   return { code: r.status, sortie: `${r.stdout}${r.stderr}` };
 }
-const NOMME = "case de consentement qui nomme la transmission";
-const SANS_LIEN = "case de consentement sans lien vers la politique de confidentialite";
+const NOMME = "consentement:case de consentement qui nomme la transmission";
+const SANS_LIEN = "consentement:case de consentement sans lien vers la politique de confidentialite";
 for (const langue of ["fr", "de"]) {
   const r = garde(actuel, langue, rendus[langue]);
   constat(r.code === 0, `garde ${langue} : texte neutre du socle : vert`);
@@ -131,7 +133,7 @@ for (const langue of ["fr", "de"]) {
   constat(v.code === 1 && v.sortie.includes(NOMME), `garde ${langue} : ancien texte du socle (${refAncienne}) : rouge`);
   const c = garde(ancien, langue, vieuxBloc);
   constat(!c.sortie.includes(NOMME), `contre-epreuve ${refAncienne} ${langue} : l'ancienne garde laissait passer l'ancien texte`);
-  const sansLien = rendus[langue].replace(/<a href="[^"]+">([^<]+)<\/a>/, "$1");
+  const sansLien = rendus[langue].replace(LIENS[langue], langue === "fr" ? "politique de confidentialité" : "Datenschutzerklärung");
   const s = garde(actuel, langue, sansLien);
   constat(s.code === 1 && s.sortie.includes(SANS_LIEN), `garde ${langue} : case sans lien de confidentialite : rouge`);
 }
@@ -141,6 +143,11 @@ const MOTS = [
   ["fr", "transmis", "J’accepte que mes données soient transmises."],
   ["fr", "professionnel", "J’accepte d’être rappelé par un professionnel."],
   ["fr", "partenaire", "J’accepte que mes données aillent à un partenaire."],
+  ["de", "weitergeleitet", "Ich bin einverstanden, dass meine Anfrage weitergeleitet wird."],
+  ["fr", "transmettre", "J’accepte de transmettre mes données."],
+  ["fr", "transmet", "J’accepte que le site transmet mes données."],
+  ["fr", "transmission", "J’accepte la transmission de mes données."],
+  ["fr", "transmise", "J’accepte que ma demande soit transmise."],
 ];
 for (const [langue, mot, phrase] of MOTS) {
   const bloc = `<label><input type="checkbox" required><span id="socle-consent-aide">${phrase} ${LIENS[langue]}.</span></label>`;

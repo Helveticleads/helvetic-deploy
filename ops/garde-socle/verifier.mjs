@@ -827,7 +827,7 @@ export const EXCEPTIONS_PLAGES = [
  * sur les pages construites, dans le texte rendu par BlocConsentement
  * (`<span id="socle-consent-aide...">`), en FR et en DE.
  */
-const CONSENT_INTERDIT = /(?<!\p{L})(?:Fachbetrieb\p{L}*|weitergegeben|weitergeleitet|transmis\p{L}*|transmettr\p{L}*|professionnel\p{L}*|partenaire\p{L}*)(?!\p{L})/giu;
+const CONSENT_INTERDIT = /(?<!\p{L})(?:Fachbetrieb\p{L}*|weitergegeben|weitergeleitet|transmis\p{L}*|transmet\p{L}*|professionnel\p{L}*|partenaire\p{L}*)(?!\p{L})/giu;
 const LIEN_CONFIDENTIALITE = /<a\b[^>]*\bhref="[^"]*(?:datenschutz|confidentialit|privacy|protection-des-donnees)[^"]*"/i;
 
 /** Les textes de la case de consentement d'une page construite. */
@@ -1020,7 +1020,7 @@ export function mesureTelephonePages(site, dossierPages, defauts) {
 
   const tout = process.env.GARDE_SOCLE_TOUT === "1";
   for (const [cle, liste] of constats) {
-    defauts.push(`telephone:${cle} : ${liste.length} page(s)\n      ${liste.slice(0, tout ? liste.length : 8).join("\n      ")}${!tout && liste.length > 8 ? `\n      (+${liste.length - 8}, tout voir : GARDE_SOCLE_TOUT=1)` : ""}`);
+    defauts.push(`${cle.startsWith("case de consentement") ? "consentement" : "telephone"}:${cle} : ${liste.length} page(s)\n      ${liste.slice(0, tout ? liste.length : 8).join("\n      ")}${!tout && liste.length > 8 ? `\n      (+${liste.length - 8}, tout voir : GARDE_SOCLE_TOUT=1)` : ""}`);
   }
   return pages.length;
 }
