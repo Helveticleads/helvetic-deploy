@@ -37,7 +37,7 @@
       "source": "src/components/HeroForm.tsx",
       "chemin": "src/components/HeroForm.tsx",
       "optionnel": true,
-      "empreinte": "e77678ffde7ca356875a7508d9bb57a29acbcba1d8a2d56df71e93b3902f1f60"
+      "empreinte": "371c3ac7b75aa05d9bfb6b40d5705733bf3aee72e974b4072213a399db5f107e"
     },
     {
       "source": "src/data/navigation.ts",

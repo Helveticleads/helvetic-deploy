@@ -10,7 +10,8 @@
  *      « devis gratuit », « Kostenloses Angebot » et « kostenloser
  *      Kostenvoranschlag », sans casse ; les libelles neutres passent.
  *      Contre-epreuve : l'ancienne garde les laissait passer.
- *   3. Aucun fichier du socle ne promet un devis gratuit.
+ *   3. Le bouton du formulaire d'accueil dit « Envoyer ma demande ».
+ *   4. Aucun fichier du socle ne promet un devis gratuit.
  *
  * Aucun reseau hors npm, aucun site reel : des doublures et des dossiers jetables.
  *
@@ -162,7 +163,16 @@ for (const neutre of ["Demande gratuite", "Demande gratuite et sans engagement",
   constat(garde(actuel, neutre).length === 0, `garde : « ${neutre} » : vert`);
 }
 
-/* 3. Aucun fichier du socle ne promet un devis gratuit. */
+/* 3. Le bouton d'envoi du formulaire d'accueil (fichier optionnel du socle) : « Envoyer ma demande » (Frederic, 09.11). */
+const BOUTON_HERO = '<Check className="h-4 w-4" /> ';
+const hero = fs.readFileSync(path.join(actuel, "socle/batiment/src/components/HeroForm.tsx"), "utf8");
+const heroAncien = fs.readFileSync(path.join(ancien, "socle/batiment/src/components/HeroForm.tsx"), "utf8");
+constat(hero.split(`${BOUTON_HERO}Envoyer ma demande\n`).length === 2 && !/gratuit/i.test(hero), "HeroForm : bouton « Envoyer ma demande », aucune autre mention de gratuite");
+constat(heroAncien.includes(`${BOUTON_HERO}Recevoir mon devis gratuit`), `contre-epreuve ${refAncienne} : le bouton disait « Recevoir mon devis gratuit »`);
+const lignesDiff = hero.split("\n").filter((l, i) => l !== heroAncien.split("\n")[i]);
+constat(hero.split("\n").length === heroAncien.split("\n").length && lignesDiff.length === 1 && lignesDiff[0].includes("Envoyer ma demande"), "HeroForm : rien d'autre ne change (une seule ligne differente)");
+
+/* 4. Aucun fichier du socle ne promet un devis gratuit. */
 const { devisGratuits } = await import(pathToFileURL(path.join(actuel, "ops/garde-socle/verifier.mjs")).href);
 const manifeste = JSON.parse(fs.readFileSync(path.join(actuel, "socle/batiment/MANIFESTE.json"), "utf8"));
 for (const entree of manifeste.fichiers) {

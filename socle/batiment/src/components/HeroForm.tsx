@@ -282,7 +282,7 @@ export function HeroForm({
                 </>
               ) : (
                 <>
-                  <Check className="h-4 w-4" /> Recevoir mon devis gratuit
+                  <Check className="h-4 w-4" /> Envoyer ma demande
                 </>
               )}
             </button>
