@@ -547,13 +547,20 @@ const HORAIRES_APPEL = /lun\w*\.?\s*(-|–|à|a|au)\s*ven\w*\.?\s*10\s*h(00)?\s*
  * par l'entreprise reste permis : « Rückruf », « zurückrufen », « ruft Sie
  * zurück », « Wir rufen Sie an » ne sont pas pris.
  */
-const ANRUF = /anruf\p{L}*|(?<!(?<!\p{L})(wir|er|sie|der|die|das|ein|eine|man)\s)(?<!\p{L})rufen\s+Sie(?!\p{L})[^.!?¦]*?(?<!\p{L})an(?!\p{L})/iu;
+/*
+ * v1.6.2 (Frederic, 09.11) : seule l'INVITATION a appeler est refusee :
+ * l'imperatif « Rufen Sie (uns) ... an » en debut de phrase ou de bloc (apres
+ * . ! ? : ¦ ou une puce), et « rufen Sie uns ... an » ou qu'il soit. « Die
+ * Fachleute rufen Sie an », « Wir rufen Sie an », « ruft Sie zurück » : le
+ * professionnel rappelle le client, permis.
+ */
+const ANRUF = /anruf\p{L}*|(?:^|(?<=[.!?:¦•·]\s*)|(?<=(?:^|\s)[-*–]\s+))rufen\s+Sie(?!\p{L})[^.!?¦]*?(?<!\p{L})an(?!\p{L})|(?<!\p{L})rufen\s+Sie\s+uns(?!\p{L})[^.!?¦]*?(?<!\p{L})an(?!\p{L})/iu;
 /*
  * v1.6.2 (bat-37 b) : « Telefon », « telefonisch », « am / per Telefon »,
  * « Telefonat »... sur un site DE, dans le texte, les metas et la FAQ JSON-LD.
  * Le libelle du champ « Telefonnummer » sort du texte lu (EXCEPTION_ANRUF).
  */
-const TELEFON = /(?<!\p{L})telefon\p{L}*/iu;
+const TELEFON = /\p{L}*telefon\p{L}*/iu; /* composes compris : « Mobiltelefon », « Festnetztelefon » (09.11) */
 /*
  * Exception nommee (Frederic, 05.11) : le champ du formulaire qui demande le
  * numero DU CLIENT pour le rappeler. C'est son numero, pas le notre : le
@@ -866,7 +873,17 @@ export function mesureTelephonePages(site, dossierPages, defauts) {
       for (const a of texteSansChamp.matchAll(new RegExp(ANRUF.source, "giu"))) {
         noter("« Anruf, anrufen, rufen Sie an » sur un site DE", page, texteSansChamp.slice(Math.max(0, a.index - 50), a.index + a[0].length + 30).replace(/¦/g, "").replace(/\s+/g, " ").trim());
       }
-      const texteTelefon = `${texteSansChamp} ¦ ${texteFaqLd(html)}`;
+      const faq = texteFaqLd(html);
+      for (const a of faq.matchAll(new RegExp(ANRUF.source, "giu"))) {
+        noter("« Anruf, anrufen, rufen Sie an » sur un site DE (FAQ JSON-LD)", page, faq.slice(Math.max(0, a.index - 50), a.index + a[0].length + 30).replace(/¦/g, "").replace(/\s+/g, " ").trim());
+      }
+      for (const m of faq.matchAll(ERREICHBAR)) {
+        const debut = Math.max(0, m.index - 80);
+        const contexte = faq.slice(debut, m.index + m[0].length + 40);
+        if (exceptionCouvre(contexte, m.index - debut)) continue;
+        noter("« erreichbar » au sens du telephone sur un site DE (FAQ JSON-LD)", page, contexte.replace(/¦/g, "").replace(/\s+/g, " ").trim());
+      }
+      const texteTelefon = `${texteSansChamp} ¦ ${faq}`;
       for (const t of texteTelefon.matchAll(new RegExp(TELEFON.source, "giu"))) {
         noter("« Telefon, telefonisch » sur un site DE (texte, metas ou FAQ JSON-LD)", page, texteTelefon.slice(Math.max(0, t.index - 50), t.index + 40).replace(/¦/g, "").replace(/\s+/g, " ").trim());
       }

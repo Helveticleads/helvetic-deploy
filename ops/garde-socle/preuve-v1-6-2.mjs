@@ -10,6 +10,10 @@
  *      « Telefonnummer » restent permis.
  *   c. « rufen Sie ... an » est vu dans toute la phrase, plus seulement a trois
  *      mots ; la fin de phrase ou de bloc l'arrete ; « Rückruf » n'est pas pris.
+ *   Q2 a Q4 (Frederic, 09.11) : « Anruf » et « erreichbar » lus aussi dans la
+ *      FAQ JSON-LD ; composes en -telefon refuses, libelles de champ permis ;
+ *      seule l'invitation a appeler est refusee (« Die Fachleute rufen Sie an »
+ *      est permis).
  *   d. UNE seule plage horaire, lun-ven 10h-19h, au pied, sur la page contact
  *      et dans le JSON-LD, en FR et en DE ; « nach Absprache » n'en est pas une.
  *
@@ -100,24 +104,34 @@ const CAS = [
     { "index.html": PAGE_DE({ head: LD({ "@type": "LocalBusiness", openingHoursSpecification: [{ "@type": "OpeningHoursSpecification", dayOfWeek: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"], opens: "10:00", closes: "19:00" }] }) }) },
     { "index.html": PAGE_DE({ head: LD({ "@type": "LocalBusiness", openingHoursSpecification: [{ "@type": "OpeningHoursSpecification", dayOfWeek: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"], opens: "10:00", closes: "19:00" }] }) }) }],
   ["d", "FR, pied « Lu–Di : 7h–20h »", PLAGE, "fr", { "index.html": PAGE_FR({ pied: "Intervention : Lu–Di : 7h–20h" }), "contact/index.html": CONTACT_FR() }, { "index.html": PAGE_FR({ pied: "Intervention : lun-ven 10h-19h" }), "contact/index.html": CONTACT_FR() }],
+  /* Q2 a Q4 (Frederic, 09.11), sans contre-epreuve : la ref ancienne n'a pas ces regles. */
+  ["Q2", "« Rufen Sie uns an » dans la FAQ JSON-LD", "(FAQ JSON-LD)", "de", { "index.html": PAGE_DE({ head: FAQ("Rufen Sie uns an.") }) }, { "index.html": PAGE_DE({ head: FAQ("Senden Sie uns eine Anfrage.") }) }, { contre: false }],
+  ["Q2", "« Anruf » dans la FAQ JSON-LD", "(FAQ JSON-LD)", "de", { "index.html": PAGE_DE({ head: FAQ("Ein Anruf genügt.") }) }, null, { contre: false }],
+  ["Q2", "« erreichbar » dans la FAQ JSON-LD", "« erreichbar » au sens du telephone sur un site DE (FAQ JSON-LD)", "de", { "index.html": PAGE_DE({ head: FAQ("Wir sind Mo-Fr erreichbar.") }) }, { "index.html": PAGE_DE({ head: FAQ("Wir sind per Formular erreichbar. Die Glaserei ist über das Formular erreichbar.") }) }, { contre: false }],
+  ["Q3", "« Mobiltelefon » dans le texte", TELEFON, "de", { "index.html": PAGE_DE({ contenu: "<p>Bitte Mobiltelefon bereithalten.</p>" }) }, { "index.html": PAGE_DE({ contenu: '<form><label for="m">Mobiltelefonnummer</label><input id="m" type="tel" placeholder="Ihre Telefonnummer"><label for="t">Ihre Telefonnummer</label><input id="t"></form>' }) }, { contre: false }],
+  ["Q3", "« Festnetztelefon » dans le texte", TELEFON, "de", { "index.html": PAGE_DE({ contenu: "<p>Per Festnetztelefon melden.</p>" }) }, null, { contre: false }],
+  ["Q4", "« Rufen Sie uns jederzeit an »", ANRUF, "de", { "index.html": PAGE_DE({ contenu: "<p>Rufen Sie uns jederzeit an.</p>" }) }, { "index.html": PAGE_DE({ contenu: "<p>Die Fachleute rufen Sie an. Wir rufen Sie an. Der Fachbetrieb ruft Sie zurück.</p>" }) }, { contre: false, contreVert: true }],
+  ["Q4", "« Bei Fragen: Rufen Sie bitte direkt an »", ANRUF, "de", { "index.html": PAGE_DE({ contenu: "<p>Bei Fragen: Rufen Sie bitte direkt an.</p>" }) }, null, { contre: false }],
   ["d", "FR, contact, une seconde plage « samedi 8h-12h »", PLAGE, "fr", { "index.html": PAGE_FR(), "contact/index.html": CONTACT_FR("<p>Samedi 8h-12h</p>") }, { "index.html": PAGE_FR(), "contact/index.html": CONTACT_FR() }],
 ];
 
-for (const [defaut, libelle, cle, langue, rouge, vert] of CAS) {
+for (const [defaut, libelle, cle, langue, rouge, vert, { contre = true, contreVert = false } = {}] of CAS) {
   if (rouge) {
     const d = site(langue, rouge);
     const r = garde(actuel, d);
     constat(r.code === 1 && r.sortie.includes(cle), `${defaut}) mutation « ${libelle} » : rouge`);
-    const v = garde(ancien, d);
-    constat(!v.sortie.includes(cle) || (defaut === "a" && v.code === 1), `${defaut}) contre-epreuve ${refAncienne} : « ${libelle} » ${defaut === "a" ? "deja rouge" : "passait"}`);
+    if (contre) {
+      const v = garde(ancien, d);
+      constat(!v.sortie.includes(cle) || (defaut === "a" && v.code === 1), `${defaut}) contre-epreuve ${refAncienne} : « ${libelle} » ${defaut === "a" ? "deja rouge" : "passait"}`);
+    }
   }
   if (vert) {
     const d = site(langue, vert);
     const r = garde(actuel, d);
     constat(r.code === 0, `${defaut}) version correcte « ${libelle} » : verte`);
-    if (defaut === "a") {
+    if (defaut === "a" || contreVert) {
       const v = garde(ancien, d);
-      constat(v.code === 1, `a) contre-epreuve ${refAncienne} : « ${libelle} » etait rouge (exception muette)`);
+      constat(v.code === 1, `${defaut}) contre-epreuve ${refAncienne} : « ${libelle} » etait rouge`);
     }
   }
 }
