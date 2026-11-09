@@ -142,13 +142,20 @@ for (const [composant, nom] of [["components/layout/Header.tsx", "Header"], ["co
   constat(vieux.tel > 0, `contre-epreuve ${refAncienne}, ${nom}, ligne: false : ${vieux.tel} lien(s) tel:, le drapeau etait ignore`);
 }
 
-/* 2. Le libelle du bouton : vide, rien ne change. */
+/*
+ * 2. Le libelle du bouton : vide, rien ne change. Depuis la v1.6.4, les
+ * libelles par defaut disent « Demande gratuite » (Frederic, 09.11) : on
+ * remplace dans le rendu ancien ces seuls noeuds de texte, a l'identique, et
+ * tout le reste du HTML doit etre egal octet pour octet.
+ */
+const LIBELLES_V164 = [["Devis gratuit", "Demande gratuite"], ["Demander un devis gratuit", "Demande gratuite et sans engagement"]];
+const libellesV164 = (html) => LIBELLES_V164.reduce((h, [a, b]) => h.split(`>${a}<`).join(`>${b}<`), html);
 const hActuel = await rendre(actuel, "components/layout/Header.tsx", "Header", { name: "Site", phone: "" });
 const hAncien = await rendre(ancien, "components/layout/Header.tsx", "Header", { name: "Site", phone: "" });
-constat(hActuel === hAncien, `en-tete sans numero, zones par defaut : HTML identique a ${refAncienne}`);
+constat(hActuel !== hAncien && hActuel === libellesV164(hAncien), `en-tete sans numero, zones par defaut : HTML identique a ${refAncienne}, aux seuls libelles de la v1.6.4 pres`);
 const hNum = await rendre(actuel, "components/layout/Header.tsx", "Header", NUMERO);
 const hNumAncien = await rendre(ancien, "components/layout/Header.tsx", "Header", NUMERO);
-constat(hNum === hNumAncien, `en-tete avec numero, zones par defaut : HTML identique a ${refAncienne}`);
+constat(hNum !== hNumAncien && hNum === libellesV164(hNumAncien), `en-tete avec numero, zones par defaut : HTML identique a ${refAncienne}, aux seuls libelles de la v1.6.4 pres`);
 const nav = path.join(actuel, "socle/batiment/src/data/navigation.ts");
 const navDefaut = fs.readFileSync(nav, "utf8");
 fs.writeFileSync(nav, navDefaut.replace("const BOUTON: { devis?: string; devisLong?: string } = {};",

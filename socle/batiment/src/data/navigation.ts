@@ -86,8 +86,9 @@ const CHEMINS: Record<CleChemin, string> = Object.assign(
 export const CHEMIN_CONTACT = CHEMINS.contact;
 
 /*
- * Le libelle du bouton de devis, propre au site. Vide, le bouton dit « Devis
- * gratuit » ou « Offerte anfragen ». Un site de rendez-vous ecrit ici
+ * Le libelle du bouton de devis, propre au site. Vide, le bouton dit « Demande
+ * gratuite » ou « Kostenlose Anfrage » (seule la demande est gratuite, jamais
+ * le devis : Frederic, 09.11). Un site de rendez-vous ecrit ici
  * `{ devis: "Prendre rendez-vous", devisLong: "Prendre rendez-vous" }`.
  */
 /* socle:libre:debut libelle du bouton de devis */
@@ -101,8 +102,8 @@ const TEXTES_LANGUE = {
     navigation: "Navigation principale",
     navigationRepliee: "Navigation repliee",
     appeler: "Appeler",
-    devis: "Devis gratuit",
-    devisLong: "Demander un devis gratuit",
+    devis: "Demande gratuite",
+    devisLong: "Demande gratuite et sans engagement",
     fermerMenu: "Fermer le menu",
     ouvrirMenu: "Ouvrir le menu",
     whatsapp: "Ecrire sur WhatsApp",
@@ -113,8 +114,8 @@ const TEXTES_LANGUE = {
     navigation: "Hauptnavigation",
     navigationRepliee: "Mobile Navigation",
     appeler: "Anrufen",
-    devis: "Offerte anfragen",
-    devisLong: "Kostenloses Angebot anfragen",
+    devis: "Kostenlose Anfrage",
+    devisLong: "Kostenlose und unverbindliche Anfrage",
     fermerMenu: "Menü schliessen",
     ouvrirMenu: "Menü öffnen",
     whatsapp: "Auf WhatsApp schreiben",

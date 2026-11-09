@@ -2,7 +2,7 @@
  * SOCLE BATIMENT : la barre collante du bas, sur mobile.
  *
  * Meme regle que l'en-tete : tout tient a `SITE_CONFIG.phone`. Vide, le
- * bouton « Appeler » n'existe pas et « Devis gratuit » prend toute la
+ * bouton « Appeler » n'existe pas et « Demande gratuite » prend toute la
  * largeur : AUCUN TROU, aucune moitie vide. Renseigne, les deux boutons se
  * partagent la rangee.
  *
