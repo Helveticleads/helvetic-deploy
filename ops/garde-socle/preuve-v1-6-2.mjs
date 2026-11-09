@@ -4,10 +4,11 @@
  *
  *   a. L'exception « über das Formular erreichbar » se declenche (la limite de
  *      mot ne voyait pas « ü ») ; elle n'est pas elargie.
- *   b. « Telefon », « telefonisch », « am / per Telefon » sont refuses sur un
- *      site DE dans le texte, le titre, les metas (description, og:*) et la
- *      FAQ JSON-LD. « Rückruf », « ruft Sie zurück » et le libelle du champ
- *      « Telefonnummer » restent permis.
+ *   b. Sur un site DE, le telephone DE L'ENTREPRISE est refuse dans le texte,
+ *      le titre, les metas et la FAQ JSON-LD, par tournures rouges nommees
+ *      (« telefonisch erreichbar », « per / am Telefon », « unsere
+ *      Telefonnummer », « Tel. » et un numero, « Hotline »...). Le numero du
+ *      client, « keine Telefonnummer », « Telefonie » passent (09.11).
  *   c. « rufen Sie ... an » est vu dans toute la phrase, plus seulement a trois
  *      mots ; la fin de phrase ou de bloc l'arrete ; « Rückruf » n'est pas pris.
  *   Q2 a Q4 (Frederic, 09.11) : « Anruf » et « erreichbar » lus aussi dans la
@@ -85,12 +86,39 @@ const PLAGE = "plage horaire autre que";
 const CAS = [
   ["a", "über das Formular erreichbar", null, "de", null, { "index.html": PAGE_DE({ contenu: "<p>Die Glaserei ist über das Formular erreichbar.</p>" }) }],
   ["a", "über das Formular, sans elargir (telefonisch erreichbar reste rouge)", ERREICHBAR, "de", { "index.html": PAGE_DE({ contenu: "<p>Über das Formular und telefonisch erreichbar.</p>" }) }, null],
-  ["b", "Telefon dans le texte", TELEFON, "de", { "index.html": PAGE_DE({ contenu: "<p>Fragen beantworten wir am Telefon.</p>" }) }, { "index.html": PAGE_DE({ contenu: "<p>Fragen beantworten wir per Formular.</p>" }) }],
-  ["b", "telefonisch dans le texte", TELEFON, "de", { "index.html": PAGE_DE({ contenu: "<p>Beratung telefonisch oder vor Ort.</p>" }) }, { "index.html": PAGE_DE({ contenu: "<p>Beratung vor Ort.</p>" }) }],
-  ["b", "per Telefon dans le titre", TELEFON, "de", { "index.html": PAGE_DE({ head: "", contenu: "x" }).replace("<title>Helvetic Exemple</title>", "<title>Offerte per Telefon</title>") }, { "index.html": PAGE_DE({ contenu: "x" }) }],
-  ["b", "Telefon dans la meta description", TELEFON, "de", { "index.html": PAGE_DE({ head: '<meta name="description" content="Offerte am Telefon anfragen">' }) }, { "index.html": PAGE_DE({ head: '<meta name="description" content="Offerte per Formular anfragen">' }) }],
-  ["b", "Telefon dans og:site_name", TELEFON, "de", { "index.html": PAGE_DE({ head: '<meta property="og:site_name" content="Telefon-Service">' }) }, { "index.html": PAGE_DE({ head: '<meta property="og:site_name" content="Helvetic Exemple">' }) }],
-  ["b", "telefonisch dans la FAQ JSON-LD", TELEFON, "de", { "index.html": PAGE_DE({ head: FAQ("Telefonisch oder per Formular.") }) }, { "index.html": PAGE_DE({ head: FAQ("Per Formular, wir melden uns.") }) }],
+  /* b, decision du 09.11 : seul le telephone de l'entreprise est rouge, dans le texte, les metas et la FAQ JSON-LD. */
+  ["b", "Wir sind telefonisch erreichbar.", TELEFON, "de", { "index.html": PAGE_DE({ contenu: "<p>Wir sind telefonisch erreichbar.</p>" }) }, null],
+  ["b", "Wir beraten Sie telefonisch.", TELEFON, "de", { "index.html": PAGE_DE({ contenu: "<p>Wir beraten Sie telefonisch.</p>" }) }, null],
+  ["b", "Sie können uns telefonisch kontaktieren.", TELEFON, "de", { "index.html": PAGE_DE({ contenu: "<p>Sie können uns telefonisch kontaktieren.</p>" }) }, null],
+  ["b", "Kostenlose telefonische Beratung.", TELEFON, "de", { "index.html": PAGE_DE({ contenu: "<p>Kostenlose telefonische Beratung.</p>" }) }, null],
+  ["b", "Ihre telefonische Anfrage wird bearbeitet.", TELEFON, "de", { "index.html": PAGE_DE({ contenu: "<p>Ihre telefonische Anfrage wird bearbeitet.</p>" }) }, null],
+  ["b", "Offerte per Telefon anfragen.", TELEFON, "de", { "index.html": PAGE_DE({ contenu: "<p>Offerte per Telefon anfragen.</p>" }) }, null],
+  ["b", "Wir beraten Sie gerne am Telefon.", TELEFON, "de", { "index.html": PAGE_DE({ contenu: "<p>Wir beraten Sie gerne am Telefon.</p>" }) }, null],
+  ["b", "Unsere Telefonnummer finden Sie unten.", TELEFON, "de", { "index.html": PAGE_DE({ contenu: "<p>Unsere Telefonnummer finden Sie unten.</p>" }) }, null],
+  ["b", "Unser Telefon ist werktags besetzt.", TELEFON, "de", { "index.html": PAGE_DE({ contenu: "<p>Unser Telefon ist werktags besetzt.</p>" }) }, null],
+  ["b", "Telefon: 044 123 45 67", TELEFON, "de", { "index.html": PAGE_DE({ contenu: "<p>Telefon: 044 123 45 67</p>" }) }, null],
+  ["b", "Tel. 044 123 45 67", TELEFON, "de", { "index.html": PAGE_DE({ contenu: "<p>Tel. 044 123 45 67</p>" }) }, null],
+  ["b", "Hotline Mo-Fr", TELEFON, "de", { "index.html": PAGE_DE({ contenu: "<p>Hotline Mo-Fr</p>" }) }, null],
+  ["b", "Kostenlose Telefonberatung.", TELEFON, "de", { "index.html": PAGE_DE({ contenu: "<p>Kostenlose Telefonberatung.</p>" }) }, null],
+  ["b", "Servicetelefon für Notfälle.", TELEFON, "de", { "index.html": PAGE_DE({ contenu: "<p>Servicetelefon für Notfälle.</p>" }) }, null],
+  ["b", "Melden Sie sich per Mobiltelefon.", TELEFON, "de", { "index.html": PAGE_DE({ contenu: "<p>Melden Sie sich per Mobiltelefon.</p>" }) }, null],
+  ["b", "Unser Mobiltelefon ist immer an.", TELEFON, "de", { "index.html": PAGE_DE({ contenu: "<p>Unser Mobiltelefon ist immer an.</p>" }) }, null],
+  ["b", "« per Telefon » dans le titre", TELEFON, "de", { "index.html": PAGE_DE({ contenu: "x" }).replace("<title>Helvetic Exemple</title>", "<title>Offerte per Telefon</title>") }, { "index.html": PAGE_DE({ contenu: "x" }) }],
+  ["b", "« am Telefon » dans la meta description", TELEFON, "de", { "index.html": PAGE_DE({ head: '<meta name="description" content="Offerte am Telefon anfragen">' }) }, { "index.html": PAGE_DE({ head: '<meta name="description" content="Offerte per Formular anfragen">' }) }],
+  ["b", "« Hotline » dans og:site_name", TELEFON, "de", { "index.html": PAGE_DE({ head: '<meta property="og:site_name" content="Helvetic Hotline">' }) }, { "index.html": PAGE_DE({ head: '<meta property="og:site_name" content="Helvetic Exemple">' }) }],
+  ["b", "« telefonisch erreichbar » dans la FAQ JSON-LD", TELEFON, "de", { "index.html": PAGE_DE({ head: FAQ("Wir sind telefonisch erreichbar.") }) }, { "index.html": PAGE_DE({ head: FAQ("Per Formular, wir melden uns.") }) }],
+  ["b", "vert (dachdecker, daemmung) : Vollständiger Name * Telefon * E-Mail", null, "de", null, { "index.html": PAGE_DE({ contenu: "<p>Vollständiger Name * Telefon * E-Mail</p>", head: FAQ("Vollständiger Name * Telefon * E-Mail") }) }],
+  ["b", "vert (Datenschutz, 10 sites DE) : Erhobene Daten: Vor- und Nachname, Telefonnummer, optional E-Mail-Adresse.", null, "de", null, { "index.html": PAGE_DE({ contenu: "<p>Erhobene Daten: Vor- und Nachname, Telefonnummer, optional E-Mail-Adresse.</p>", head: FAQ("Erhobene Daten: Vor- und Nachname, Telefonnummer, optional E-Mail-Adresse.") }) }],
+  ["b", "vert (Impressum) : Es wird keine öffentliche Telefonnummer angegeben.", null, "de", null, { "index.html": PAGE_DE({ contenu: "<p>Es wird keine öffentliche Telefonnummer angegeben.</p>", head: FAQ("Es wird keine öffentliche Telefonnummer angegeben.") }) }],
+  ["b", "vert (elektriker, heizung FAQ) : Keine direkte Telefonnummer, das Formular priorisiert.", null, "de", null, { "index.html": PAGE_DE({ contenu: "<p>Keine direkte Telefonnummer, das Formular priorisiert.</p>", head: FAQ("Keine direkte Telefonnummer, das Formular priorisiert.") }) }],
+  ["b", "vert (malerei) : Hinterlassen Sie Ihre Telefonnummer für einen Rückruf.", null, "de", null, { "index.html": PAGE_DE({ contenu: "<p>Hinterlassen Sie Ihre Telefonnummer für einen Rückruf.</p>", head: FAQ("Hinterlassen Sie Ihre Telefonnummer für einen Rückruf.") }) }],
+  ["b", "vert (sanitaer) : Geben Sie Ihre Telefonnummer im Formular an.", null, "de", null, { "index.html": PAGE_DE({ contenu: "<p>Geben Sie Ihre Telefonnummer im Formular an.</p>", head: FAQ("Geben Sie Ihre Telefonnummer im Formular an.") }) }],
+  ["b", "vert (glaserei) : Name und Telefonnummer der Person, die Auskunft gibt.", null, "de", null, { "index.html": PAGE_DE({ contenu: "<p>Name und Telefonnummer der Person, die Auskunft gibt.</p>", head: FAQ("Name und Telefonnummer der Person, die Auskunft gibt.") }) }],
+  ["b", "vert (elektriker) : Arbeiten Bildschirm, Telefonie, konzentrierte Tätigkeit.", null, "de", null, { "index.html": PAGE_DE({ contenu: "<p>Arbeiten Bildschirm, Telefonie, konzentrierte Tätigkeit.</p>", head: FAQ("Arbeiten Bildschirm, Telefonie, konzentrierte Tätigkeit.") }) }],
+  ["b", "vert (schluesseldienst) : Prüfen Sie, ob Schlüssel und Telefon wieder greifbar sind.", null, "de", null, { "index.html": PAGE_DE({ contenu: "<p>Prüfen Sie, ob Schlüssel und Telefon wieder greifbar sind.</p>", head: FAQ("Prüfen Sie, ob Schlüssel und Telefon wieder greifbar sind.") }) }],
+  ["b", "vert (glaserei, rohrreinigung) : Vorname Nachname Telefon E-Mail (optional)", null, "de", null, { "index.html": PAGE_DE({ contenu: "<p>Vorname Nachname Telefon E-Mail (optional)</p>", head: FAQ("Vorname Nachname Telefon E-Mail (optional)") }) }],
+  ["b", "vert (kaminfeger) : Notieren Sie eine Telefonnummer für Rückfragen.", null, "de", null, { "index.html": PAGE_DE({ contenu: "<p>Notieren Sie eine Telefonnummer für Rückfragen.</p>", head: FAQ("Notieren Sie eine Telefonnummer für Rückfragen.") }) }],
+  ["b", "vert (Q3) : Bitte Mobiltelefon bereithalten.", null, "de", null, { "index.html": PAGE_DE({ contenu: "<p>Bitte Mobiltelefon bereithalten.</p>", head: FAQ("Bitte Mobiltelefon bereithalten.") }) }],
   ["b", "Rückruf, ruft Sie zurück, champ Telefonnummer : permis", null, "de", null, { "index.html": PAGE_DE({ contenu: '<p>Rückruf anfordern. Ein Fachbetrieb ruft Sie zurück.</p><form><label for="t">Telefonnummer für den Rückruf</label><input id="t" type="tel"></form>' }) }],
   ["c", "rufen Sie ... an, 6 mots entre", ANRUF, "de", { "index.html": PAGE_DE({ contenu: "<p>Rufen Sie bei einem Rohrbruch bitte sofort direkt an.</p>" }) }, { "index.html": PAGE_DE({ contenu: "<p>Melden Sie bei einem Rohrbruch bitte sofort das Formular.</p>" }) }],
   ["c", "la fin de phrase arrete (rufen Sie ... . ... an)", null, "de", null, { "index.html": PAGE_DE({ contenu: "<p>Rufen Sie zurück? Nein. Wir melden uns an Werktagen.</p>" }) }],
@@ -108,8 +136,6 @@ const CAS = [
   ["Q2", "« Rufen Sie uns an » dans la FAQ JSON-LD", "(FAQ JSON-LD)", "de", { "index.html": PAGE_DE({ head: FAQ("Rufen Sie uns an.") }) }, { "index.html": PAGE_DE({ head: FAQ("Senden Sie uns eine Anfrage.") }) }, { contre: false }],
   ["Q2", "« Anruf » dans la FAQ JSON-LD", "(FAQ JSON-LD)", "de", { "index.html": PAGE_DE({ head: FAQ("Ein Anruf genügt.") }) }, null, { contre: false }],
   ["Q2", "« erreichbar » dans la FAQ JSON-LD", "« erreichbar » au sens du telephone sur un site DE (FAQ JSON-LD)", "de", { "index.html": PAGE_DE({ head: FAQ("Wir sind Mo-Fr erreichbar.") }) }, { "index.html": PAGE_DE({ head: FAQ("Wir sind per Formular erreichbar. Die Glaserei ist über das Formular erreichbar.") }) }, { contre: false }],
-  ["Q3", "« Mobiltelefon » dans le texte", TELEFON, "de", { "index.html": PAGE_DE({ contenu: "<p>Bitte Mobiltelefon bereithalten.</p>" }) }, { "index.html": PAGE_DE({ contenu: '<form><label for="m">Mobiltelefonnummer</label><input id="m" type="tel" placeholder="Ihre Telefonnummer"><label for="t">Ihre Telefonnummer</label><input id="t"></form>' }) }, { contre: false }],
-  ["Q3", "« Festnetztelefon » dans le texte", TELEFON, "de", { "index.html": PAGE_DE({ contenu: "<p>Per Festnetztelefon melden.</p>" }) }, null, { contre: false }],
   ["Q4", "« Rufen Sie uns jederzeit an »", ANRUF, "de", { "index.html": PAGE_DE({ contenu: "<p>Rufen Sie uns jederzeit an.</p>" }) }, { "index.html": PAGE_DE({ contenu: "<p>Die Fachleute rufen Sie an. Wir rufen Sie an. Der Fachbetrieb ruft Sie zurück.</p>" }) }, { contre: false, contreVert: true }],
   ["Q4", "« Bei Fragen: Rufen Sie bitte direkt an »", ANRUF, "de", { "index.html": PAGE_DE({ contenu: "<p>Bei Fragen: Rufen Sie bitte direkt an.</p>" }) }, null, { contre: false }],
   ["d", "FR, contact, une seconde plage « samedi 8h-12h »", PLAGE, "fr", { "index.html": PAGE_FR(), "contact/index.html": CONTACT_FR("<p>Samedi 8h-12h</p>") }, { "index.html": PAGE_FR(), "contact/index.html": CONTACT_FR() }],

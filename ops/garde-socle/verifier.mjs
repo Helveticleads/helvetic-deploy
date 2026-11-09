@@ -556,11 +556,23 @@ const HORAIRES_APPEL = /lun\w*\.?\s*(-|–|à|a|au)\s*ven\w*\.?\s*10\s*h(00)?\s*
  */
 const ANRUF = /anruf\p{L}*|(?:^|(?<=[.!?:¦•·]\s*)|(?<=(?:^|\s)[-*–]\s+))rufen\s+Sie(?!\p{L})[^.!?¦]*?(?<!\p{L})an(?!\p{L})|(?<!\p{L})rufen\s+Sie\s+uns(?!\p{L})[^.!?¦]*?(?<!\p{L})an(?!\p{L})/iu;
 /*
- * v1.6.2 (bat-37 b) : « Telefon », « telefonisch », « am / per Telefon »,
- * « Telefonat »... sur un site DE, dans le texte, les metas et la FAQ JSON-LD.
- * Le libelle du champ « Telefonnummer » sort du texte lu (EXCEPTION_ANRUF).
+ * v1.6.2 (bat-37 b, decision de Frederic du 09.11) : SEUL le telephone de
+ * l'entreprise est refuse, ce qui invite le visiteur a appeler, sur un site DE,
+ * dans le texte, les metas et la FAQ JSON-LD. Une liste de tournures ROUGES
+ * nommees ; un « Telefon... » hors de ces tournures passe (le champ du client,
+ * « Telefonnummer » dans les donnees collectees, « keine Telefonnummer »,
+ * « Ihre Telefonnummer für den Rückruf », « Telefonie »...).
  */
-const TELEFON = /\p{L}*telefon\p{L}*/iu; /* composes compris : « Mobiltelefon », « Festnetztelefon » (09.11) */
+const TEL = "(?:mobil|festnetz)?telefon";
+export const TOURNURES_TELEFON = [
+  ["telefonisch comme canal", `(?<!\\p{L})telefonisch(?:e[nrms]?)?\\s+(?:erreichbar|berat\\p{L}*|Beratung|kontaktier\\p{L}*|Kontakt\\p{L}*|Anfrage\\p{L}*|anfragen|melden|erreichen|Auskunft)(?!\\p{L})`],
+  ["canal puis telefonisch", `(?<!\\p{L})(?:berat\\p{L}*|Beratung|erreichbar|kontaktier\\p{L}*|erreichen)\\s+(?:\\p{L}+\\s+){0,2}?telefonisch(?!\\p{L})`],
+  ["per / am Telefon", `(?<!\\p{L})(?:per|am|via|übers)\\s+${TEL}(?!\\p{L})`],
+  ["notre telephone", `(?<!\\p{L})unser(?:e[mnrs]?)?\\s+(?:${TEL}\\p{L}*|Hotline)(?!\\p{L})`],
+  ["Telefon: ou Tel. suivi d'un numero", `(?<!\\p{L})(?:${TEL}|Tel\\.?)\\s*:?\\s*\\+?\\d`],
+  ["Hotline, Telefonberatung, Servicetelefon", `(?<!\\p{L})(?:\\p{L}*Hotline\\p{L}*|\\p{L}*Telefonberatung\\p{L}*|Servicetelefon\\p{L}*)`],
+];
+const TELEFON = new RegExp(TOURNURES_TELEFON.map(([, m]) => `(?:${m})`).join("|"), "iu");
 /*
  * Exception nommee (Frederic, 05.11) : le champ du formulaire qui demande le
  * numero DU CLIENT pour le rappeler. C'est son numero, pas le notre : le
