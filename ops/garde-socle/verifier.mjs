@@ -547,7 +547,13 @@ const HORAIRES_APPEL = /lun\w*\.?\s*(-|–|à|a|au)\s*ven\w*\.?\s*10\s*h(00)?\s*
  * par l'entreprise reste permis : « Rückruf », « zurückrufen », « ruft Sie
  * zurück », « Wir rufen Sie an » ne sont pas pris.
  */
-const ANRUF = /anruf\w*|(?<!\b(wir|er|sie|der|die|das|ein|eine|man)\s)\brufen\s+Sie\s+(?:[^\s.?!]+\s+){0,3}?an\b/i;
+const ANRUF = /anruf\p{L}*|(?<!(?<!\p{L})(wir|er|sie|der|die|das|ein|eine|man)\s)(?<!\p{L})rufen\s+Sie(?!\p{L})[^.!?¦]*?(?<!\p{L})an(?!\p{L})/iu;
+/*
+ * v1.6.2 (bat-37 b) : « Telefon », « telefonisch », « am / per Telefon »,
+ * « Telefonat »... sur un site DE, dans le texte, les metas et la FAQ JSON-LD.
+ * Le libelle du champ « Telefonnummer » sort du texte lu (EXCEPTION_ANRUF).
+ */
+const TELEFON = /(?<!\p{L})telefon\p{L}*/iu;
 /*
  * Exception nommee (Frederic, 05.11) : le champ du formulaire qui demande le
  * numero DU CLIENT pour le rappeler. C'est son numero, pas le notre : le
@@ -610,7 +616,7 @@ export const EXCEPTIONS_ERREICHBAR = [
   },
   {
     sens: "joignable PAR LE FORMULAIRE, le canal est nomme dans la tournure",
-    motif: /\b(per|über das)\s+Formular\s+erreichbar(?!keit)\b|\bErreichbarkeit per Formular\b/gi,
+    motif: /(?<!\p{L})(per|über das)\s+Formular\s+erreichbar(?!keit)(?!\p{L})|(?<!\p{L})Erreichbarkeit per Formular(?!\p{L})/giu,
     exemple: "Kostenloser KV, per Formular erreichbar.",
   },
 ];
@@ -618,7 +624,7 @@ export const EXCEPTIONS_ERREICHBAR = [
 /** Vrai si une exception nommee couvre l'occurrence placee a `position` du contexte. */
 function exceptionCouvre(contexte, position) {
   return EXCEPTIONS_ERREICHBAR.some((x) =>
-    [...contexte.matchAll(new RegExp(x.motif.source, "gi"))].some((m) => m.index <= position && position < m.index + m[0].length),
+    [...contexte.matchAll(new RegExp(x.motif.source, x.motif.flags.includes("g") ? x.motif.flags : `${x.motif.flags}g`))].some((m) => m.index <= position && position < m.index + m[0].length),
   );
 }
 
@@ -667,20 +673,124 @@ export function mesureTelephoneSource(site, defauts) {
   }
 }
 
-function texteVisible(html) {
+/* Les elements de bloc : leur fin coupe une phrase (« rufen Sie ... an », v1.6.2). */
+const BLOC_HTML = /<\/?(p|div|li|ul|ol|h[1-6]|td|th|tr|table|section|article|header|footer|nav|main|aside|form|label|button|dt|dd|dl|br|summary|details|blockquote|figcaption)\b[^>]*>/gi;
+
+function texteVisible(html, { blocs = false } = {}) {
   const metas = [...html.matchAll(/<meta\b[^>]*\bcontent="([^"]*)"[^>]*>/gi)]
-    .filter((m) => /(name|property)="(description|og:description|og:title|twitter:description|twitter:title)"/i.test(m[0]))
+    .filter((m) => /(name|property)="(description|og:[\w:]+|twitter:[\w:]+)"/i.test(m[0]))
     .map((m) => m[1]);
-  const corps = html
-    .replace(/<(script|style|noscript)\b[^>]*>[\s\S]*?<\/\1>/gi, " ")
-    .replace(/<[^>]+>/g, " ");
+  let corps = html.replace(/<(script|style|noscript)\b[^>]*>[\s\S]*?<\/\1>/gi, " ");
+  if (blocs) corps = corps.replace(BLOC_HTML, " ¦ ");
+  corps = corps.replace(/<[^>]+>/g, " ");
   return [corps, ...metas]
-    .join(" ")
+    .join(blocs ? " ¦ " : " ")
     .replace(/&nbsp;|&#160;|&#xa0;/gi, " ")
     .replace(/&#x27;|&#39;|&apos;/gi, "'")
     .replace(/&amp;/g, "&")
     .replace(/[  ]/g, " ")
     .replace(/\s+/g, " ");
+}
+
+/** Les objets JSON-LD d'une page (illisibles : ignores). */
+function jsonLd(html) {
+  const out = [];
+  for (const m of html.matchAll(/<script\b[^>]*type="application\/ld\+json"[^>]*>([\s\S]*?)<\/script>/gi)) {
+    try {
+      out.push(JSON.parse(m[1]));
+    } catch {
+      /* un JSON-LD illisible n'est pas lu ici */
+    }
+  }
+  return out;
+}
+
+function parcourirLd(noeud, visite) {
+  if (Array.isArray(noeud)) noeud.forEach((n) => parcourirLd(n, visite));
+  else if (noeud && typeof noeud === "object") {
+    visite(noeud);
+    Object.values(noeud).forEach((n) => parcourirLd(n, visite));
+  }
+}
+
+const typesLd = (n) => [n["@type"]].flat().map(String);
+
+/** Le texte des questions et reponses FAQ du JSON-LD. */
+function texteFaqLd(html) {
+  const morceaux = [];
+  for (const ld of jsonLd(html)) {
+    parcourirLd(ld, (n) => {
+      if (typesLd(n).some((t) => t === "Question" || t === "Answer")) {
+        for (const k of ["name", "text"]) if (typeof n[k] === "string") morceaux.push(n[k]);
+      }
+    });
+  }
+  return morceaux.map((t) => texteVisible(t, { blocs: true })).join(" ¦ ");
+}
+
+/*
+ * v1.6.2 (bat-37 d) : UNE seule plage horaire affichee, en FR et en DE, au
+ * pied, sur la page contact et dans le JSON-LD : celle qui est servie depuis le
+ * 09.11, du lundi au vendredi de 10 h a 19 h (« Lun-ven 10h-19h »,
+ * « Mo-Fr 10–19 Uhr », JSON-LD « Mo-Fr 10:00-19:00 »). « nach Absprache »
+ * n'est pas une plage horaire.
+ */
+const JOURS = {
+  fr: [["lundi", "lun", "lu"], ["mardi", "mar", "ma"], ["mercredi", "mer", "me"], ["jeudi", "jeu", "je"], ["vendredi", "ven", "ve"], ["samedi", "sam", "sa"], ["dimanche", "dim", "di"]],
+  de: [["montag", "mo"], ["dienstag", "di"], ["mittwoch", "mi"], ["donnerstag", "do"], ["freitag", "fr"], ["samstag", "sa"], ["sonntag", "so"]],
+  en: [["monday", "mo"], ["tuesday", "tu"], ["wednesday", "we"], ["thursday", "th"], ["friday", "fr"], ["saturday", "sa"], ["sunday", "su"]],
+};
+const SEP = "(?:-|–|—|à|a|au|bis)";
+const HEURE_PLAGE = "(\\d{1,2})(?:\\s*(h)\\s*(\\d{2})?|:(\\d{2})|\\.(\\d{2}))?";
+
+function motifPlage(langue) {
+  const jour = `(${JOURS[langue].flat().sort((a, b) => b.length - a.length).join("|")})`;
+  return new RegExp(
+    `(?:(?<!\\p{L})${jour}\\.?(?:\\s*${SEP}\\s*${jour}\\.?)?(?!\\p{L})\\s*[:,]?\\s*(?:von|de|dès)?\\s*)?(?<![\\d.:])${HEURE_PLAGE}\\s*${SEP}\\s*${HEURE_PLAGE}(\\s*Uhr)?(?![\\d])`,
+    "giu",
+  );
+}
+
+function numeroJour(langue, mot) {
+  const i = JOURS[langue].findIndex((noms) => noms.includes(mot?.toLowerCase()));
+  return i < 0 ? null : i + 1;
+}
+
+/** Les plages horaires d'un texte, chacune dite conforme ou non. */
+export function plagesHoraires(texte, langue) {
+  const out = [];
+  for (const m of texte.matchAll(motifPlage(langue))) {
+    const [, j1, j2, h1, h1h, h1m, h1c, h1p, h2, h2h, h2m, h2c, h2p, uhr] = m;
+    const marque = h1h || h2h || h1c || h2c || ((h1p || h2p) && uhr) || uhr;
+    if (!marque) continue; /* « 2-3 », un code postal ou un prix : pas une heure */
+    if ((h1p || h2p) && !uhr) continue;
+    const debut = Number(h1) * 60 + Number(h1m || h1c || h1p || 0);
+    const fin = Number(h2) * 60 + Number(h2m || h2c || h2p || 0);
+    const d1 = j1 ? numeroJour(langue, j1) : null;
+    const d2 = j2 ? numeroJour(langue, j2) : null;
+    const jours = !j1 || (d1 === 1 && d2 === 5);
+    out.push({ texte: m[0].trim(), conforme: jours && debut === 600 && fin === 1140 });
+  }
+  return out;
+}
+
+/** Les heures d'ouverture du JSON-LD, en texte « Mo-Fr 10:00-19:00 ». */
+function plagesLd(html) {
+  const out = [];
+  const nomJour = (d) => String(d).replace(/^https?:\/\/schema\.org\//, "").slice(0, 2);
+  for (const ld of jsonLd(html)) {
+    parcourirLd(ld, (n) => {
+      for (const h of [n.openingHours].flat()) if (typeof h === "string") out.push(...plagesHoraires(h, "en"));
+      if (typesLd(n).includes("OpeningHoursSpecification") && n.opens && n.closes) {
+        const jours = [n.dayOfWeek].flat().filter(Boolean).map(nomJour);
+        const texte = `${jours.length ? `${jours[0]}-${jours[jours.length - 1]} ` : ""}${n.opens}-${n.closes}`;
+        const p = plagesHoraires(texte, "en");
+        const ok = jours.length === 5 && ["Mo", "Tu", "We", "Th", "Fr"].every((j) => jours.includes(j));
+        out.push(...p.map((x) => ({ ...x, conforme: x.conforme && (jours.length === 0 || ok) })));
+      }
+    });
+  }
+  return out;
 }
 
 function bloc(html, debut, fin) {
@@ -731,13 +841,34 @@ export function mesureTelephonePages(site, dossierPages, defauts) {
     const page = path.relative(dossierPages, p);
     const html = lire(p);
 
+    /* d) une seule plage horaire, FR et DE : pied, page contact, JSON-LD. */
+    const zones = [["pied", bloc(html, "<footer", "</footer>")]];
+    if (/^(contact|kontakt)[\\/]index\.html$/.test(page)) {
+      const i = html.indexOf("</header>");
+      const j = html.indexOf("<footer", i);
+      zones.push(["contact", i < 0 ? html : html.slice(i, j < 0 ? html.length : j)]);
+    }
+    for (const [zone, contenu] of zones) {
+      if (!contenu) continue;
+      for (const x of plagesHoraires(texteVisible(contenu), regle.langue)) {
+        if (!x.conforme) noter(`plage horaire autre que lun-ven 10h-19h (${zone})`, page, x.texte);
+      }
+    }
+    for (const x of plagesLd(html)) {
+      if (!x.conforme) noter("plage horaire autre que Mo-Fr 10:00-19:00 (JSON-LD)", page, x.texte);
+    }
+
     if (regle.langue === "de") {
       if (/href="tel:/i.test(html)) noter("lien tel: sur un site DE", page);
       if (/class="[^"]*\blucide-phone/i.test(html)) noter("icone de telephone sur un site DE", page);
       const texte = texteVisible(html);
-      const texteSansChamp = texteVisible(sansChampTelefonnummer(html));
-      for (const a of texteSansChamp.matchAll(new RegExp(ANRUF.source, "gi"))) {
-        noter("« Anruf, anrufen, rufen Sie an » sur un site DE", page, texteSansChamp.slice(Math.max(0, a.index - 50), a.index + 40).trim());
+      const texteSansChamp = texteVisible(sansChampTelefonnummer(html), { blocs: true });
+      for (const a of texteSansChamp.matchAll(new RegExp(ANRUF.source, "giu"))) {
+        noter("« Anruf, anrufen, rufen Sie an » sur un site DE", page, texteSansChamp.slice(Math.max(0, a.index - 50), a.index + a[0].length + 30).replace(/¦/g, "").replace(/\s+/g, " ").trim());
+      }
+      const texteTelefon = `${texteSansChamp} ¦ ${texteFaqLd(html)}`;
+      for (const t of texteTelefon.matchAll(new RegExp(TELEFON.source, "giu"))) {
+        noter("« Telefon, telefonisch » sur un site DE (texte, metas ou FAQ JSON-LD)", page, texteTelefon.slice(Math.max(0, t.index - 50), t.index + 40).replace(/¦/g, "").replace(/\s+/g, " ").trim());
       }
       for (const m of texte.matchAll(ERREICHBAR)) {
         const debut = Math.max(0, m.index - 80);
