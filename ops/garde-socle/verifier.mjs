@@ -554,7 +554,15 @@ const HORAIRES_APPEL = /lun\w*\.?\s*(-|–|à|a|au)\s*ven\w*\.?\s*10\s*h(00)?\s*
  * Fachleute rufen Sie an », « Wir rufen Sie an », « ruft Sie zurück » : le
  * professionnel rappelle le client, permis.
  */
-const ANRUF = /anruf\p{L}*|(?:^|(?<=[.!?:¦•·]\s*)|(?<=(?:^|\s)[-*–]\s+))rufen\s+Sie(?!\p{L})[^.!?¦]*?(?<!\p{L})an(?!\p{L})|(?<!\p{L})rufen\s+Sie\s+uns(?!\p{L})[^.!?¦]*?(?<!\p{L})an(?!\p{L})/iu;
+/*
+ * v1.6.5 (trou 4 de l'audit, decision de Frederic du 09.11 ; source :
+ * _audit-batiment-04-11/CORRECTIFS/SOCLE-V1-6-2/REVERIF/REVERIF-SOCLE-V1-6-2-09-11.md,
+ * tests-audit-garde-1.mjs) : l'invitation IMPLICITE a nous appeler, sans « an » :
+ * « Rufen Sie die Polizei (117), dann uns. » ; l'imperatif « Rufen Sie » en
+ * debut de phrase, puis « dann / danach / anschliessend / und / oder / sowie
+ * uns » dans la meme phrase. « Rufen Sie die Polizei (117). » seul passe.
+ */
+const ANRUF = /anruf\p{L}*|(?:^|(?<=[.!?:¦•·]\s*)|(?<=(?:^|\s)[-*–]\s+))rufen\s+Sie(?!\p{L})[^.!?¦]*?(?<!\p{L})an(?!\p{L})|(?<!\p{L})rufen\s+Sie\s+uns(?!\p{L})[^.!?¦]*?(?<!\p{L})an(?!\p{L})|(?:^|(?<=[.!?:¦•·]\s*)|(?<=(?:^|\s)[-*–]\s+))rufen\s+Sie(?!\p{L})[^.!?¦]*?(?<!\p{L})(?:dann|danach|anschliessend|und|oder|sowie)\s+uns(?!\p{L})/iu;
 /*
  * v1.6.2 (bat-37 b, decision de Frederic du 09.11) : SEUL le telephone de
  * l'entreprise est refuse, ce qui invite le visiteur a appeler, sur un site DE,
@@ -581,6 +589,16 @@ export const TOURNURES_TELEFON = [
   ["Hotline offerte au visiteur", `(?<!\\p{L})(?:kostenlos\\p{L}*|gratis|unverbindlich\\p{L}*|persönlich\\p{L}*|direkt\\p{L}*)\\s+(?:Hotline|Telefonberatung|Servicetelefon)(?![\\p{L}-])|(?<![\\p{L}-])(?:Hotline|Telefonberatung|Servicetelefon)\\s+für\\s+(?:Kunden|Sie|Ihre?\\p{L}*|Notfälle)(?!\\p{L})`],
 ];
 const TELEFON = new RegExp(TOURNURES_TELEFON.map(([, m]) => `(?:${m})`).join("|"), "iu");
+/*
+ * v1.6.5 (trou 1 de l'audit, decision de Frederic du 09.11 ; source :
+ * _audit-batiment-04-11/CORRECTIFS/SOCLE-V1-6-2/REVERIF/REVERIF-SOCLE-V1-6-2-09-11.md,
+ * tests-audit-garde-1.mjs et -2.mjs) : un numero suisse ECRIT dans le texte d'un
+ * site DE, seul (« 044 555 66 77 ») ou apres « Telefonnummer: ». Formes :
+ * 0XX XXX XX XX, +41 XX XXX XX XX, 0041..., 0800 XXX XXX, espaces facultatifs.
+ * Le champ du client (« Telefon * », « Telefonnummer » comme libelle) ne porte
+ * pas de numero : il passe.
+ */
+export const NUMERO_SUISSE = /(?<![\d.,:/+-])(?:(?:\+|00)41\s?|0)(?:\d{2}\s?\d{3}\s?\d{2}\s?\d{2}|8\d{2}\s?\d{3}\s?\d{3})(?![\d.,])/gu;
 /*
  * Exception nommee (Frederic, 05.11) : le champ du formulaire qui demande le
  * numero DU CLIENT pour le rappeler. C'est son numero, pas le notre : le
@@ -778,6 +796,18 @@ function motifPlage(langue) {
   );
 }
 
+/*
+ * v1.6.5 (trou 2 de l'audit, decision de Frederic du 09.11 ; source :
+ * REVERIF-SOCLE-V1-6-2-09-11.md, tests-audit-garde-1.mjs et -2.mjs, forme reelle
+ * du pied de FR-helvetique-vitrerie.ch avant le 08.11) : en FR, une plage dont
+ * les tirets sont devenus des virgules, « Lu, Di : 7h, 20h » : deux jours, deux
+ * points, deux heures marquees « h ».
+ */
+function motifPlageVirgule() {
+  const jour = `(${JOURS.fr.flat().sort((a, b) => b.length - a.length).join("|")})`;
+  return new RegExp(`(?<!\\p{L})${jour}\\.?\\s*,\\s*${jour}\\.?\\s*:\\s*(\\d{1,2})\\s*h\\s*(\\d{2})?\\s*,\\s*(\\d{1,2})\\s*h\\s*(\\d{2})?(?!\\d)`, "giu");
+}
+
 function numeroJour(langue, mot) {
   const i = JOURS[langue].findIndex((noms) => noms.includes(mot?.toLowerCase()));
   return i < 0 ? null : i + 1;
@@ -794,8 +824,8 @@ export const EXCEPTIONS_PLAGES = [
     sens: "plage d'intervention ou de chantier etiquetee (« Intervention », « Einsatz », « Einsatzzeiten ») : le libelle est le dernier avant la plage, dans le meme bloc, seules d'autres plages s'intercalent",
     source: `${SOURCE_RELEVES}/RESTES-TELEPHONE-05-11.md, FR-helvetique-terrassement.ch (garde le 05.11) ; RELEVE-PLAGES-DE-08-11.md ; REFORMULATIONS-RESTES-05-11.md, « 08.11 plages DE »`,
     portee: "etiquette",
-    motif: /(?<!\p{L})(?:Interventions?|Horaires d'intervention|Einsatz(?:zeiten|zeit)?|Einsätze)$/iu,
-    exemple: "Intervention Lun-Ven 7h–20h · Sam 8h–12h",
+    motif: /(?<!\p{L})(?:Interventions?|Horaires d'intervention|Einsatz(?:zeiten|zeit)?|Einsätze|Termine?)$/iu,
+    exemple: "Intervention Lun-Ven 7h–20h · Sam 8h–12h ; v1.6.5 : « Termine », et « Einsatzzeiten: 7 Tage, 7 bis 21.30 Uhr » (decision de Frederic du 09.11, precision a l'audit)",
   },
   {
     sens: "plage dans une phrase ou un tableau de majoration ou de tarif",
@@ -818,6 +848,38 @@ export const EXCEPTIONS_PLAGES = [
     motif: /(?<!\p{L})(?:cr[ée]neaux?|Zeitfenster)(?!\p{L})/iu,
     exemple: "Intervention sur créneaux de 2 heures (ex: 9h-11h, 14h-16h).",
   },
+  /*
+   * v1.6.5 (trou 3 de l'audit) : les plages du CORPS des pages (<main>) sont
+   * lues. Decision de Frederic (09.11) : une plage d'ouverture ou de
+   * joignabilite est rouge ; une plage liee a l'INTERVENTION reste verte, comme
+   * les durees et les contraintes de chantier. Ces trois exceptions ne valent
+   * que dans le corps.
+   */
+  {
+    sens: "plage liee a l'intervention dans la phrase (« Intervention », « Einsatz », « Einsatzzeiten », « Termine »), sans mot de joignabilite dans la meme phrase",
+    source: "decision de Frederic du 09.11 (prompt v1.6.5, point c ; REVERIF-SOCLE-V1-6-2-09-11.md, « Précision de Frédéric ») ; decision du 03-04.11 pour les sites DE sans telephone",
+    portee: "phrase",
+    zones: ["corps"],
+    motif: /(?<!\p{L})(?:Interventions?|Einsatz\p{L}*|Einsätze|Termine?)(?!\p{L})/iu,
+    sauf: /(?<!\p{L})(?:joignables?|ouverts?|ouvertes?|ouverture|appel\p{L}*|appele[rz]|t[ée]l[ée]phon\p{L}*|permanence|erreichbar\p{L}*|Erreichbarkeit|ge[öo]ffnet|Öffnungszeit\p{L}*|Anruf\p{L}*|anrufen|Telefon\p{L}*|Rückruf\p{L}*|zurück\p{L}*|Hotline|Bürozeit\p{L}*|Sprechzeit\p{L}*)(?!\p{L})/iu,
+    exemple: "Einsatzzeiten: 7 Tage, 7 bis 21.30 Uhr.",
+  },
+  {
+    sens: "une duree, pas une heure du jour : une borne au-dela de 24, ou un mot de duree dans la phrase",
+    source: "decision de Frederic du 09.11 (prompt v1.6.5, point c : « les durées » restent vertes)",
+    portee: "phrase",
+    zones: ["corps"],
+    motif: /(?<!\p{L})(?:dur[ée]es?|durent|dure|comptez|compter|pr[ée]voy?ez|pr[ée]voir|pendant|environ|d[ée]lai\p{L}*|s[ée]chage|Dauer|dauer[nt]?|innerhalb|binnen|ca\.|etwa|rund|Trocknung\p{L}*)(?!\p{L})/iu,
+    exemple: "Comptez 2 à 4 h de séchage ; réponse sous 24 à 48 h.",
+  },
+  {
+    sens: "une contrainte de chantier ou de bruit",
+    source: "decision de Frederic du 09.11 (prompt v1.6.5, point c : « Montage vor 7 Uhr oder nach 22 Uhr nur nach Absprache »)",
+    portee: "phrase",
+    zones: ["corps"],
+    motif: /(?<!\p{L})(?:chantiers?|Baustelle\p{L}*|Bauarbeit\p{L}*|Montage\p{L}*|Lärm\p{L}*|Ruhezeit\p{L}*|Nachtruhe|Mittagsruhe|bruit\p{L}*|nuisances?)(?!\p{L})/iu,
+    exemple: "Montage von 7 bis 12 Uhr, Lärm nur werktags.",
+  },
 ];
 
 /*
@@ -836,7 +898,7 @@ export function textesConsentement(html) {
 }
 
 /** L'exception nommee qui couvre la plage placee de `debut` a `fin` du texte, ou null. */
-function exceptionPlage(texte, debut, fin, langue) {
+function exceptionPlage(texte, debut, fin, langue, zone) {
   const ouvre = Math.max(texte.lastIndexOf("¦", debut), -1) + 1;
   const ferme = (() => { const j = texte.indexOf("¦", fin); return j < 0 ? texte.length : j; })();
   const bloc = texte.slice(ouvre, ferme);
@@ -846,13 +908,25 @@ function exceptionPlage(texte, debut, fin, langue) {
   const phraseFin = (() => { const k = apres.search(/[.!?]/); return k < 0 ? apres.length : k; })();
   const phrase = texte.slice(ouvre + phraseDebut, fin + phraseFin);
   /* L'etiquette : retirer les plages et les separateurs qui precedent, le libelle doit etre en bout. */
-  const tete = avantBloc.replace(motifPlage(langue), " ").replace(/(?:[\s·•,;:|/]|\bet\b|\bund\b|\bsowie\b)+$/giu, "").trimEnd();
-  return EXCEPTIONS_PLAGES.find((x) => (x.portee === "etiquette" ? x.motif.test(tete) : x.motif.test(phrase))) ?? null;
+  const separateurs = /(?:[\s·•,;:|/]|\bet\b|\bund\b|\bsowie\b)+$/giu;
+  /* v1.6.5 : un qualificatif de jours entre le libelle et la plage (« Einsatzzeiten: 7 Tage, 7 bis 21.30 Uhr »). */
+  const tete = avantBloc.replace(motifPlage(langue), " ").replace(separateurs, "").replace(/(?<!\p{L})(?:\d\s*Tage|täglich|tous les jours|7\s*j(?:ours)?\s*\/\s*7|7\/7)$/iu, "").replace(separateurs, "").trimEnd();
+  return EXCEPTIONS_PLAGES.find((x) =>
+    (!x.zones || x.zones.includes(zone)) &&
+    (x.portee === "etiquette" ? x.motif.test(tete) : x.motif.test(phrase) && !(x.sauf && x.sauf.test(phrase)))) ?? null;
 }
 
 /** Les plages horaires d'un texte, chacune dite conforme ou non. */
-export function plagesHoraires(texte, langue) {
+export function plagesHoraires(texte, langue, zone = null) {
   const out = [];
+  if (langue === "fr") {
+    for (const m of texte.matchAll(motifPlageVirgule())) {
+      const [, j1, j2, h1, m1, h2, m2] = m;
+      const conforme = numeroJour("fr", j1) === 1 && numeroJour("fr", j2) === 5 && Number(h1) * 60 + Number(m1 || 0) === 600 && Number(h2) * 60 + Number(m2 || 0) === 1140;
+      const exception = conforme ? null : exceptionPlage(texte, m.index, m.index + m[0].length, langue, zone);
+      out.push({ texte: m[0].trim(), conforme: conforme || Boolean(exception), exception: exception?.sens ?? null });
+    }
+  }
   for (const m of texte.matchAll(motifPlage(langue))) {
     const [, j1, j2, h1, h1h, h1m, h1c, h1p, h2, h2h, h2m, h2c, h2p, uhr] = m;
     const marque = h1h || h2h || h1c || h2c || ((h1p || h2p) && uhr) || uhr;
@@ -864,7 +938,10 @@ export function plagesHoraires(texte, langue) {
     const d2 = j2 ? numeroJour(langue, j2) : null;
     const jours = !j1 || (d1 === 1 && d2 === 5);
     const conforme = jours && debut === 600 && fin === 1140;
-    const exception = conforme ? null : exceptionPlage(texte, m.index, m.index + m[0].length, langue);
+    /* v1.6.5 : dans le corps, une borne au-dela de 24 h est une duree (« 24 à 48 h »), pas une heure. */
+    const duree = zone === "corps" && (Number(h1) > 24 || Number(h2) > 24);
+    const exception = conforme || duree ? null : exceptionPlage(texte, m.index, m.index + m[0].length, langue, zone);
+    if (duree) { out.push({ texte: m[0].trim(), conforme: true, exception: "une duree, pas une heure du jour" }); continue; }
     out.push({ texte: m[0].trim(), conforme: conforme || Boolean(exception), exception: exception?.sens ?? null });
   }
   return out;
@@ -944,16 +1021,18 @@ export function mesureTelephonePages(site, dossierPages, defauts) {
       if (!LIEN_CONFIDENTIALITE.test(bloc)) noter("case de consentement sans lien vers la politique de confidentialite", page);
     }
 
-    /* d) une seule plage horaire, FR et DE : pied, page contact, JSON-LD. */
+    /* d) une seule plage horaire, FR et DE : pied, page contact, JSON-LD ; v1.6.5 (trou 3) : corps des pages (<main>). */
     const zones = [["pied", bloc(html, "<footer", "</footer>")]];
     if (/^(contact|kontakt)[\\/]index\.html$/.test(page)) {
       const i = html.indexOf("</header>");
       const j = html.indexOf("<footer", i);
       zones.push(["contact", i < 0 ? html : html.slice(i, j < 0 ? html.length : j)]);
+    } else {
+      zones.push(["corps", bloc(html, "<main", "</main>")]);
     }
     for (const [zone, contenu] of zones) {
       if (!contenu) continue;
-      for (const x of plagesHoraires(texteVisible(contenu, { blocs: true }), regle.langue)) {
+      for (const x of plagesHoraires(texteVisible(contenu, { blocs: true }), regle.langue, zone)) {
         if (!x.conforme) noter(`plage horaire autre que lun-ven 10h-19h (${zone})`, page, x.texte);
       }
     }
@@ -988,6 +1067,9 @@ export function mesureTelephonePages(site, dossierPages, defauts) {
         const contexte = texte.slice(debut, m.index + m[0].length + 40);
         if (exceptionCouvre(contexte, m.index - debut)) continue;
         noter("« erreichbar » au sens du telephone sur un site DE (ou exception a nommer)", page, contexte.trim());
+      }
+      for (const n of texteTelefon.matchAll(NUMERO_SUISSE)) {
+        noter("numero de telephone ecrit sur un site DE (texte, metas ou FAQ JSON-LD)", page, texteTelefon.slice(Math.max(0, n.index - 30), n.index + n[0].length + 10).replace(/¦/g, "").replace(/\s+/g, " ").trim());
       }
       continue;
     }

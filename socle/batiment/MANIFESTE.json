@@ -1,6 +1,6 @@
 {
   "socle": "batiment",
-  "version": 8,
+  "version": 9,
   "note": "Empreintes du contenu normalise (zones libres retirees). Refaire avec: node ops/garde-socle/manifeste.mjs",
   "fichiers": [
     {
@@ -62,7 +62,7 @@
     {
       "source": "../../ops/garde-socle/verifier.mjs",
       "chemin": "scripts/garde-socle.mjs",
-      "empreinte": "f8c027c6aa39ee6320f91f6c8322cfe89ed7c0bc5c71975e6410199995b6d207"
+      "empreinte": "50d0773d0679052dca158eecc44fd16512acdf809c1d231470f0b86e674a0ec3"
     }
   ]
 }

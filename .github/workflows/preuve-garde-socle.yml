@@ -45,3 +45,5 @@ jobs:
         run: node ops/garde-socle/preuve-v1-6-3.mjs v1.6.2
       - name: Seule la demande est gratuite, jamais le devis
         run: node ops/garde-socle/preuve-v1-6-4.mjs v1.6.3
+      - name: Les 4 trous de la garde des pages (audit), numero DE, plage a virgules, corps des pages, dann uns
+        run: node ops/garde-socle/preuve-v1-6-5.mjs v1.6.4

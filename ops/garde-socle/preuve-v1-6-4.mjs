@@ -179,7 +179,7 @@ for (const entree of manifeste.fichiers) {
   const trouves = devisGratuits(fs.readFileSync(path.join(actuel, "socle/batiment", entree.source), "utf8"));
   constat(trouves.length === 0, `socle ${entree.source} : ${trouves.length ? trouves.map((t) => `ligne ${t.ligne} « ${t.texte} »`).join(", ") : "aucun devis gratuit"}`);
 }
-constat(manifeste.version === 8, `manifeste : version ${manifeste.version} (attendu 8)`);
+constat(manifeste.version >= 8, `manifeste : version ${manifeste.version} (attendu 8 ou plus, la v1.6.4 l'a porte a 8)`);
 
 fs.rmSync(tmp, { recursive: true, force: true });
 if (echecs > 0) {
