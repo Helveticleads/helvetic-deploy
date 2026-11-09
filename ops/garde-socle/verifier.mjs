@@ -547,7 +547,40 @@ const HORAIRES_APPEL = /lun\w*\.?\s*(-|–|à|a|au)\s*ven\w*\.?\s*10\s*h(00)?\s*
  * par l'entreprise reste permis : « Rückruf », « zurückrufen », « ruft Sie
  * zurück », « Wir rufen Sie an » ne sont pas pris.
  */
-const ANRUF = /anruf\w*|(?<!\b(wir|er|sie|der|die|das|ein|eine|man)\s)\brufen\s+Sie\s+(?:[^\s.?!]+\s+){0,3}?an\b/i;
+/*
+ * v1.6.2 (Frederic, 09.11) : seule l'INVITATION a appeler est refusee :
+ * l'imperatif « Rufen Sie (uns) ... an » en debut de phrase ou de bloc (apres
+ * . ! ? : ¦ ou une puce), et « rufen Sie uns ... an » ou qu'il soit. « Die
+ * Fachleute rufen Sie an », « Wir rufen Sie an », « ruft Sie zurück » : le
+ * professionnel rappelle le client, permis.
+ */
+const ANRUF = /anruf\p{L}*|(?:^|(?<=[.!?:¦•·]\s*)|(?<=(?:^|\s)[-*–]\s+))rufen\s+Sie(?!\p{L})[^.!?¦]*?(?<!\p{L})an(?!\p{L})|(?<!\p{L})rufen\s+Sie\s+uns(?!\p{L})[^.!?¦]*?(?<!\p{L})an(?!\p{L})/iu;
+/*
+ * v1.6.2 (bat-37 b, decision de Frederic du 09.11) : SEUL le telephone de
+ * l'entreprise est refuse, ce qui invite le visiteur a appeler, sur un site DE,
+ * dans le texte, les metas et la FAQ JSON-LD. Une liste de tournures ROUGES
+ * nommees ; un « Telefon... » hors de ces tournures passe (le champ du client,
+ * « Telefonnummer » dans les donnees collectees, « keine Telefonnummer »,
+ * « Ihre Telefonnummer für den Rückruf », « Telefonie »...).
+ */
+const TEL = "(?:mobil|festnetz)?telefon";
+export const TOURNURES_TELEFON = [
+  ["telefonisch comme canal", `(?<!\\p{L})telefonisch(?:e[nrms]?)?\\s+(?:erreichbar|berat\\p{L}*|Beratung|kontaktier\\p{L}*|Kontakt\\p{L}*|Anfrage\\p{L}*|anfragen|melden|erreichen|Auskunft)(?!\\p{L})`],
+  ["canal puis telefonisch", `(?<!\\p{L})(?:berat\\p{L}*|Beratung|erreichbar|kontaktier\\p{L}*|erreichen)\\s+(?:\\p{L}+\\s+){0,2}?telefonisch(?!\\p{L})`],
+  ["per / am Telefon", `(?<!\\p{L})(?:per|am|via|übers)\\s+${TEL}(?!\\p{L})`],
+  ["notre telephone", `(?<!\\p{L})unser(?:e[mnrs]?)?\\s+(?:${TEL}\\p{L}*|Hotline|Servicetelefon\\p{L}*)(?!\\p{L})`],
+  ["Telefon: ou Tel. suivi d'un numero", `(?<!\\p{L})(?:${TEL}|Tel\\.?)\\s*:?\\s*\\+?\\d`],
+  /*
+   * Hotline, Telefonberatung, Servicetelefon (Frederic, 09.11) : seulement
+   * celle de l'entreprise, suivie d'un numero ou d'un horaire, ou offerte au
+   * visiteur. Une hotline d'un tiers (« Hersteller-Hotline », « Verwaltungs-
+   * Hotline », « Hotline des Herstellers ») ou niee (« keine Telefonberatung »,
+   * « zwischen Hotlines ») passe.
+   */
+  ["Hotline suivie d'un numero ou d'un horaire", `(?<![\\p{L}-])(?:Hotline|Telefonberatung|Servicetelefon)\\s*:?\\s*(?:\\+?\\d|Mo|Lu)(?!\\p{L}{3})`],
+  ["Hotline offerte au visiteur", `(?<!\\p{L})(?:kostenlos\\p{L}*|gratis|unverbindlich\\p{L}*|persönlich\\p{L}*|direkt\\p{L}*)\\s+(?:Hotline|Telefonberatung|Servicetelefon)(?![\\p{L}-])|(?<![\\p{L}-])(?:Hotline|Telefonberatung|Servicetelefon)\\s+für\\s+(?:Kunden|Sie|Ihre?\\p{L}*|Notfälle)(?!\\p{L})`],
+];
+const TELEFON = new RegExp(TOURNURES_TELEFON.map(([, m]) => `(?:${m})`).join("|"), "iu");
 /*
  * Exception nommee (Frederic, 05.11) : le champ du formulaire qui demande le
  * numero DU CLIENT pour le rappeler. C'est son numero, pas le notre : le
@@ -610,7 +643,7 @@ export const EXCEPTIONS_ERREICHBAR = [
   },
   {
     sens: "joignable PAR LE FORMULAIRE, le canal est nomme dans la tournure",
-    motif: /\b(per|über das)\s+Formular\s+erreichbar(?!keit)\b|\bErreichbarkeit per Formular\b/gi,
+    motif: /(?<!\p{L})(per|über das)\s+Formular\s+erreichbar(?!keit)(?!\p{L})|(?<!\p{L})Erreichbarkeit per Formular(?!\p{L})/giu,
     exemple: "Kostenloser KV, per Formular erreichbar.",
   },
 ];
@@ -618,7 +651,7 @@ export const EXCEPTIONS_ERREICHBAR = [
 /** Vrai si une exception nommee couvre l'occurrence placee a `position` du contexte. */
 function exceptionCouvre(contexte, position) {
   return EXCEPTIONS_ERREICHBAR.some((x) =>
-    [...contexte.matchAll(new RegExp(x.motif.source, "gi"))].some((m) => m.index <= position && position < m.index + m[0].length),
+    [...contexte.matchAll(new RegExp(x.motif.source, x.motif.flags.includes("g") ? x.motif.flags : `${x.motif.flags}g`))].some((m) => m.index <= position && position < m.index + m[0].length),
   );
 }
 
@@ -667,20 +700,178 @@ export function mesureTelephoneSource(site, defauts) {
   }
 }
 
-function texteVisible(html) {
+/* Les elements de bloc : leur fin coupe une phrase (« rufen Sie ... an », v1.6.2). */
+const BLOC_HTML = /<\/?(p|div|li|ul|ol|h[1-6]|td|th|tr|table|section|article|header|footer|nav|main|aside|form|label|button|dt|dd|dl|br|summary|details|blockquote|figcaption)\b[^>]*>/gi;
+
+function texteVisible(html, { blocs = false } = {}) {
   const metas = [...html.matchAll(/<meta\b[^>]*\bcontent="([^"]*)"[^>]*>/gi)]
-    .filter((m) => /(name|property)="(description|og:description|og:title|twitter:description|twitter:title)"/i.test(m[0]))
+    .filter((m) => /(name|property)="(description|og:[\w:]+|twitter:[\w:]+)"/i.test(m[0]))
     .map((m) => m[1]);
-  const corps = html
-    .replace(/<(script|style|noscript)\b[^>]*>[\s\S]*?<\/\1>/gi, " ")
-    .replace(/<[^>]+>/g, " ");
+  let corps = html.replace(/<(script|style|noscript)\b[^>]*>[\s\S]*?<\/\1>/gi, " ");
+  if (blocs) corps = corps.replace(BLOC_HTML, " ¦ ");
+  corps = corps.replace(/<[^>]+>/g, " ");
   return [corps, ...metas]
-    .join(" ")
+    .join(blocs ? " ¦ " : " ")
     .replace(/&nbsp;|&#160;|&#xa0;/gi, " ")
     .replace(/&#x27;|&#39;|&apos;/gi, "'")
     .replace(/&amp;/g, "&")
     .replace(/[  ]/g, " ")
     .replace(/\s+/g, " ");
+}
+
+/** Les objets JSON-LD d'une page (illisibles : ignores). */
+function jsonLd(html) {
+  const out = [];
+  for (const m of html.matchAll(/<script\b[^>]*type="application\/ld\+json"[^>]*>([\s\S]*?)<\/script>/gi)) {
+    try {
+      out.push(JSON.parse(m[1]));
+    } catch {
+      /* un JSON-LD illisible n'est pas lu ici */
+    }
+  }
+  return out;
+}
+
+function parcourirLd(noeud, visite) {
+  if (Array.isArray(noeud)) noeud.forEach((n) => parcourirLd(n, visite));
+  else if (noeud && typeof noeud === "object") {
+    visite(noeud);
+    Object.values(noeud).forEach((n) => parcourirLd(n, visite));
+  }
+}
+
+const typesLd = (n) => [n["@type"]].flat().map(String);
+
+/** Le texte des questions et reponses FAQ du JSON-LD. */
+function texteFaqLd(html) {
+  const morceaux = [];
+  for (const ld of jsonLd(html)) {
+    parcourirLd(ld, (n) => {
+      if (typesLd(n).some((t) => t === "Question" || t === "Answer")) {
+        for (const k of ["name", "text"]) if (typeof n[k] === "string") morceaux.push(n[k]);
+      }
+    });
+  }
+  return morceaux.map((t) => texteVisible(t, { blocs: true })).join(" ¦ ");
+}
+
+/*
+ * v1.6.2 (bat-37 d) : UNE seule plage horaire affichee, en FR et en DE, au
+ * pied, sur la page contact et dans le JSON-LD : celle qui est servie depuis le
+ * 09.11, du lundi au vendredi de 10 h a 19 h (« Lun-ven 10h-19h »,
+ * « Mo-Fr 10–19 Uhr », JSON-LD « Mo-Fr 10:00-19:00 »). « nach Absprache »
+ * n'est pas une plage horaire.
+ */
+const JOURS = {
+  fr: [["lundi", "lun", "lu"], ["mardi", "mar", "ma"], ["mercredi", "mer", "me"], ["jeudi", "jeu", "je"], ["vendredi", "ven", "ve"], ["samedi", "sam", "sa"], ["dimanche", "dim", "di"]],
+  de: [["montag", "mo"], ["dienstag", "di"], ["mittwoch", "mi"], ["donnerstag", "do"], ["freitag", "fr"], ["samstag", "sa"], ["sonntag", "so"]],
+  en: [["monday", "mo"], ["tuesday", "tu"], ["wednesday", "we"], ["thursday", "th"], ["friday", "fr"], ["saturday", "sa"], ["sunday", "su"]],
+};
+const SEP = "(?:-|–|—|à|a|au|bis)";
+const HEURE_PLAGE = "(\\d{1,2})(?:\\s*(h)\\s*(\\d{2})?|:(\\d{2})|\\.(\\d{2}))?";
+
+function motifPlage(langue) {
+  const jour = `(${JOURS[langue].flat().sort((a, b) => b.length - a.length).join("|")})`;
+  return new RegExp(
+    `(?:(?<!\\p{L})${jour}\\.?(?:\\s*${SEP}\\s*${jour}\\.?)?(?!\\p{L})\\s*[:,]?\\s*(?:von|de|dès)?\\s*)?(?<![\\d.:])${HEURE_PLAGE}\\s*${SEP}\\s*${HEURE_PLAGE}(\\s*Uhr)?(?![\\d])`,
+    "giu",
+  );
+}
+
+function numeroJour(langue, mot) {
+  const i = JOURS[langue].findIndex((noms) => noms.includes(mot?.toLowerCase()));
+  return i < 0 ? null : i + 1;
+}
+
+/*
+ * Plages qui ne sont PAS des horaires d'appel (Frederic, 09.11) : exceptions
+ * nommees UNE PAR UNE, chacune avec sa source. Une plage d'appel fausse reste
+ * rouge, meme a cote d'une plage d'intervention.
+ */
+const SOURCE_RELEVES = "_audit-batiment-04-11/CORRECTIFS/SOCLE";
+export const EXCEPTIONS_PLAGES = [
+  {
+    sens: "plage d'intervention ou de chantier etiquetee (« Intervention », « Einsatz », « Einsatzzeiten ») : le libelle est le dernier avant la plage, dans le meme bloc, seules d'autres plages s'intercalent",
+    source: `${SOURCE_RELEVES}/RESTES-TELEPHONE-05-11.md, FR-helvetique-terrassement.ch (garde le 05.11) ; RELEVE-PLAGES-DE-08-11.md ; REFORMULATIONS-RESTES-05-11.md, « 08.11 plages DE »`,
+    portee: "etiquette",
+    motif: /(?<!\p{L})(?:Interventions?|Horaires d'intervention|Einsatz(?:zeiten|zeit)?|Einsätze)$/iu,
+    exemple: "Intervention Lun-Ven 7h–20h · Sam 8h–12h",
+  },
+  {
+    sens: "plage dans une phrase ou un tableau de majoration ou de tarif",
+    source: `${SOURCE_RELEVES}/REFORMULATIONS-RESTES-05-11.md, « Cas gardés » (majoration, schluesseldienst « Tagstarife ») ; RESTES-TELEPHONE-05-11.md, FR-helvetique-plomberie.ch (nuit 22h-7h, majoration)`,
+    portee: "phrase",
+    motif: /(?<!\p{L})(?:\p{L}*zuschl[aä]g\p{L}*|\p{L}*tarif\p{L}*|majoration\p{L}*|major[ée]\p{L}*|Aufpreis\p{L}*)/iu,
+    exemple: "Tagstarife gelten von 7 bis 22 Uhr ; für Nachteinsätze kann ein Zuschlag anfallen.",
+  },
+  {
+    sens: "« 24 h/24 » ou « 24/7 » qui porte sur le formulaire",
+    source: `${SOURCE_RELEVES}/RESTES-TELEPHONE-05-11.md, FR-helvetique-serrurerie.ch (« Formulaire 24 h/24 », garde)`,
+    portee: "phrase",
+    motif: /(?<!\p{L})(?:Formulaire|Formular)(?!\p{L})[^.!?¦]*?24\s*(?:h\s*\/\s*24|\/\s*7)/iu,
+    exemple: "Formulaire 24 h/24, traitement ouvrable",
+  },
+  {
+    sens: "creneaux d'intervention donnes en exemple",
+    source: `${SOURCE_RELEVES}/RESTES-TELEPHONE-05-11.md, FR-helvetique-plomberie.ch (« créneaux de 2 heures … (ex: 9h-11h, 14h-16h) », garde)`,
+    portee: "phrase",
+    motif: /(?<!\p{L})(?:cr[ée]neaux?|Zeitfenster)(?!\p{L})/iu,
+    exemple: "Intervention sur créneaux de 2 heures (ex: 9h-11h, 14h-16h).",
+  },
+];
+
+/** L'exception nommee qui couvre la plage placee de `debut` a `fin` du texte, ou null. */
+function exceptionPlage(texte, debut, fin, langue) {
+  const ouvre = Math.max(texte.lastIndexOf("¦", debut), -1) + 1;
+  const ferme = (() => { const j = texte.indexOf("¦", fin); return j < 0 ? texte.length : j; })();
+  const bloc = texte.slice(ouvre, ferme);
+  const avantBloc = texte.slice(ouvre, debut);
+  const phraseDebut = Math.max(...[".", "!", "?"].map((c) => avantBloc.lastIndexOf(c)), -1) + 1;
+  const apres = texte.slice(fin, ferme);
+  const phraseFin = (() => { const k = apres.search(/[.!?]/); return k < 0 ? apres.length : k; })();
+  const phrase = texte.slice(ouvre + phraseDebut, fin + phraseFin);
+  /* L'etiquette : retirer les plages et les separateurs qui precedent, le libelle doit etre en bout. */
+  const tete = avantBloc.replace(motifPlage(langue), " ").replace(/(?:[\s·•,;:|/]|\bet\b|\bund\b|\bsowie\b)+$/giu, "").trimEnd();
+  return EXCEPTIONS_PLAGES.find((x) => (x.portee === "etiquette" ? x.motif.test(tete) : x.motif.test(phrase))) ?? null;
+}
+
+/** Les plages horaires d'un texte, chacune dite conforme ou non. */
+export function plagesHoraires(texte, langue) {
+  const out = [];
+  for (const m of texte.matchAll(motifPlage(langue))) {
+    const [, j1, j2, h1, h1h, h1m, h1c, h1p, h2, h2h, h2m, h2c, h2p, uhr] = m;
+    const marque = h1h || h2h || h1c || h2c || ((h1p || h2p) && uhr) || uhr;
+    if (!marque) continue; /* « 2-3 », un code postal ou un prix : pas une heure */
+    if ((h1p || h2p) && !uhr) continue;
+    const debut = Number(h1) * 60 + Number(h1m || h1c || h1p || 0);
+    const fin = Number(h2) * 60 + Number(h2m || h2c || h2p || 0);
+    const d1 = j1 ? numeroJour(langue, j1) : null;
+    const d2 = j2 ? numeroJour(langue, j2) : null;
+    const jours = !j1 || (d1 === 1 && d2 === 5);
+    const conforme = jours && debut === 600 && fin === 1140;
+    const exception = conforme ? null : exceptionPlage(texte, m.index, m.index + m[0].length, langue);
+    out.push({ texte: m[0].trim(), conforme: conforme || Boolean(exception), exception: exception?.sens ?? null });
+  }
+  return out;
+}
+
+/** Les heures d'ouverture du JSON-LD, en texte « Mo-Fr 10:00-19:00 ». */
+function plagesLd(html) {
+  const out = [];
+  const nomJour = (d) => String(d).replace(/^https?:\/\/schema\.org\//, "").slice(0, 2);
+  for (const ld of jsonLd(html)) {
+    parcourirLd(ld, (n) => {
+      for (const h of [n.openingHours].flat()) if (typeof h === "string") out.push(...plagesHoraires(h, "en"));
+      if (typesLd(n).includes("OpeningHoursSpecification") && n.opens && n.closes) {
+        const jours = [n.dayOfWeek].flat().filter(Boolean).map(nomJour);
+        const texte = `${jours.length ? `${jours[0]}-${jours[jours.length - 1]} ` : ""}${n.opens}-${n.closes}`;
+        const p = plagesHoraires(texte, "en");
+        const ok = jours.length === 5 && ["Mo", "Tu", "We", "Th", "Fr"].every((j) => jours.includes(j));
+        out.push(...p.map((x) => ({ ...x, conforme: x.conforme && (jours.length === 0 || ok) })));
+      }
+    });
+  }
+  return out;
 }
 
 function bloc(html, debut, fin) {
@@ -731,13 +922,44 @@ export function mesureTelephonePages(site, dossierPages, defauts) {
     const page = path.relative(dossierPages, p);
     const html = lire(p);
 
+    /* d) une seule plage horaire, FR et DE : pied, page contact, JSON-LD. */
+    const zones = [["pied", bloc(html, "<footer", "</footer>")]];
+    if (/^(contact|kontakt)[\\/]index\.html$/.test(page)) {
+      const i = html.indexOf("</header>");
+      const j = html.indexOf("<footer", i);
+      zones.push(["contact", i < 0 ? html : html.slice(i, j < 0 ? html.length : j)]);
+    }
+    for (const [zone, contenu] of zones) {
+      if (!contenu) continue;
+      for (const x of plagesHoraires(texteVisible(contenu, { blocs: true }), regle.langue)) {
+        if (!x.conforme) noter(`plage horaire autre que lun-ven 10h-19h (${zone})`, page, x.texte);
+      }
+    }
+    for (const x of plagesLd(html)) {
+      if (!x.conforme) noter("plage horaire autre que Mo-Fr 10:00-19:00 (JSON-LD)", page, x.texte);
+    }
+
     if (regle.langue === "de") {
       if (/href="tel:/i.test(html)) noter("lien tel: sur un site DE", page);
       if (/class="[^"]*\blucide-phone/i.test(html)) noter("icone de telephone sur un site DE", page);
       const texte = texteVisible(html);
-      const texteSansChamp = texteVisible(sansChampTelefonnummer(html));
-      for (const a of texteSansChamp.matchAll(new RegExp(ANRUF.source, "gi"))) {
-        noter("« Anruf, anrufen, rufen Sie an » sur un site DE", page, texteSansChamp.slice(Math.max(0, a.index - 50), a.index + 40).trim());
+      const texteSansChamp = texteVisible(sansChampTelefonnummer(html), { blocs: true });
+      for (const a of texteSansChamp.matchAll(new RegExp(ANRUF.source, "giu"))) {
+        noter("« Anruf, anrufen, rufen Sie an » sur un site DE", page, texteSansChamp.slice(Math.max(0, a.index - 50), a.index + a[0].length + 30).replace(/¦/g, "").replace(/\s+/g, " ").trim());
+      }
+      const faq = texteFaqLd(html);
+      for (const a of faq.matchAll(new RegExp(ANRUF.source, "giu"))) {
+        noter("« Anruf, anrufen, rufen Sie an » sur un site DE (FAQ JSON-LD)", page, faq.slice(Math.max(0, a.index - 50), a.index + a[0].length + 30).replace(/¦/g, "").replace(/\s+/g, " ").trim());
+      }
+      for (const m of faq.matchAll(ERREICHBAR)) {
+        const debut = Math.max(0, m.index - 80);
+        const contexte = faq.slice(debut, m.index + m[0].length + 40);
+        if (exceptionCouvre(contexte, m.index - debut)) continue;
+        noter("« erreichbar » au sens du telephone sur un site DE (FAQ JSON-LD)", page, contexte.replace(/¦/g, "").replace(/\s+/g, " ").trim());
+      }
+      const texteTelefon = `${texteSansChamp} ¦ ${faq}`;
+      for (const t of texteTelefon.matchAll(new RegExp(TELEFON.source, "giu"))) {
+        noter("« Telefon, telefonisch » sur un site DE (texte, metas ou FAQ JSON-LD)", page, texteTelefon.slice(Math.max(0, t.index - 50), t.index + 40).replace(/¦/g, "").replace(/\s+/g, " ").trim());
       }
       for (const m of texte.matchAll(ERREICHBAR)) {
         const debut = Math.max(0, m.index - 80);

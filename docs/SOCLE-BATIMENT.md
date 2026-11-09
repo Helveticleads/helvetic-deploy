@@ -59,6 +59,9 @@ lit sur les PAGES CONSTRUITES, par la garde lancee en fin de build
 | Site DE (`langue: "de"`) : `phone: ""` | garde socle, mesure d'effet |
 | Site DE : aucun lien `tel:`, aucune icone de telephone, aucun « Anruf », « Anrufe », « anrufen », compose en -anruf, « rufen Sie ... an », aucun « erreichbar » au sens de joignable par telephone, sur aucune page. Exception nommee : le libelle du champ « Telefonnummer » du formulaire (le numero du client) | garde des pages |
 | Les usages de « erreichbar » sans rapport avec le telephone (« gut erreichbar mit dem ÖV ») : exceptions NOMMEES une par une dans `EXCEPTIONS_ERREICHBAR` de `ops/garde-socle/verifier.mjs`, chacune avec son sens et un exemple | garde des pages ; `preuve-v1-6-1.mjs` |
+| Site DE (v1.6.2, decision du 09.11) : aucun telephone DE L'ENTREPRISE dans le texte, le titre, les metas (description, `og:*`, `twitter:*`) ni le texte FAQ du JSON-LD. Tournures rouges nommees (`TOURNURES_TELEFON`) : « telefonisch » comme canal (« telefonisch erreichbar / beraten / kontaktieren », « telefonische Beratung / Anfrage »), « per / am Telefon », « unsere Telefonnummer », « unser Telefon », « Telefon: » ou « Tel. » suivi d'un numero, « Hotline », « Telefonberatung », « Servicetelefon » seulement de l'entreprise : « unsere Hotline », suivie d'un numero ou d'un horaire, ou offerte au visiteur (« kostenlose Telefonberatung », « Hotline 24/7 ») ; une hotline d'un tiers (« Hersteller-Hotline », « Verwaltungs-Hotline ») ou niee (« zwischen Hotlines », « keine Telefonberatung ») passe (composes en mobil-, festnetz- compris). Tout autre « Telefon... » passe : le champ et le texte d'aide ou le client donne son numero, « Telefonnummer » dans les donnees collectees, « keine Telefonnummer », « Telefonie » | garde des pages ; `preuve-v1-6-2.mjs` |
+| Site DE (v1.6.2) : « rufen Sie ... an » est vu dans toute la phrase (jusqu'au prochain `.`, `!`, `?` ou fin de bloc HTML) ; « Rückruf », « ruft Sie zurück » restent permis | garde des pages ; `preuve-v1-6-2.mjs` |
+| FR et DE (v1.6.2) : UNE seule plage horaire, du lundi au vendredi de 10 h a 19 h, au pied de chaque page, dans le contenu de la page contact et dans le JSON-LD (`openingHours`, `openingHoursSpecification`) ; abreviations comprises (« Lun-ven 10h-19h », « Mo-Fr 10–19 Uhr », « Mo-Fr 10:00-19:00 ») ; « nach Absprache » n'est pas une plage. Ne sont PAS des horaires d'appel (decision du 09.11, `EXCEPTIONS_PLAGES`, chacune avec sa source) : une plage etiquetee « Intervention », « Einsatz », « Einsatzzeiten » (libelle le plus proche, dans le meme bloc), une plage dans une phrase de majoration ou de tarif, « 24 h/24 » du formulaire, les creneaux d'intervention donnes en exemple. Une plage d'appel fausse reste rouge, meme a cote d'une plage d'intervention | garde des pages ; `preuve-v1-6-2.mjs` |
 | Le build du site lance la garde des pages, apres le prerendu | garde socle, mesure d'effet |
 
 Les sites du parc ne sont pas concernes : leur regle est le drapeau `ligne`
@@ -175,7 +178,7 @@ Un socle modifie sans recopie rend les sites ROUGES au prochain build : c'est
 voulu. La garde dit quel fichier et quelle ligne.
 
 **La cle `version` de `MANIFESTE.json` augmente de 1 a chaque version publiee.**
-Decision de Frederic du 02.11.2026. Elle vaut 2 avec la v1.4.0, 3 avec la v1.5.0, 4 avec la v1.6.0, 5 avec la v1.6.1. Elle s'ecrit dans
+Decision de Frederic du 02.11.2026. Elle vaut 2 avec la v1.4.0, 3 avec la v1.5.0, 4 avec la v1.6.0, 5 avec la v1.6.1, 6 avec la v1.6.2. Elle s'ecrit dans
 `ops/garde-socle/manifeste.mjs`, avant le tag. Un site non concerne par une
 version garde la valeur de sa derniere recopie : la garde ne lit pas cette cle.
 
