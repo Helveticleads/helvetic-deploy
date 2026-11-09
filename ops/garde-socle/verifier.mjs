@@ -820,6 +820,21 @@ export const EXCEPTIONS_PLAGES = [
   },
 ];
 
+/*
+ * v1.6.3 (Frederic, 04.11 et 09.11) : le texte de la case de consentement est
+ * NEUTRE. Il ne nomme ni le professionnel ni la transmission, qui s'expliquent
+ * dans la politique de confidentialite ; il porte le lien vers cette page. Lu
+ * sur les pages construites, dans le texte rendu par BlocConsentement
+ * (`<span id="socle-consent-aide...">`), en FR et en DE.
+ */
+const CONSENT_INTERDIT = /(?<!\p{L})(?:Fachbetrieb\p{L}*|weitergegeben|weitergeleitet|transmis\p{L}*|transmettr\p{L}*|professionnel\p{L}*|partenaire\p{L}*)(?!\p{L})/giu;
+const LIEN_CONFIDENTIALITE = /<a\b[^>]*\bhref="[^"]*(?:datenschutz|confidentialit|privacy|protection-des-donnees)[^"]*"/i;
+
+/** Les textes de la case de consentement d'une page construite. */
+export function textesConsentement(html) {
+  return [...html.matchAll(/<span\b[^>]*\bid="socle-consent-aide[^"]*"[^>]*>([\s\S]*?)<\/span>/gi)].map((m) => m[1]);
+}
+
 /** L'exception nommee qui couvre la plage placee de `debut` a `fin` du texte, ou null. */
 function exceptionPlage(texte, debut, fin, langue) {
   const ouvre = Math.max(texte.lastIndexOf("¦", debut), -1) + 1;
@@ -921,6 +936,13 @@ export function mesureTelephonePages(site, dossierPages, defauts) {
   for (const p of pages) {
     const page = path.relative(dossierPages, p);
     const html = lire(p);
+
+    /* v1.6.3 : la case de consentement, neutre et avec le lien de confidentialite. */
+    for (const bloc of textesConsentement(html)) {
+      const texte = texteVisible(bloc);
+      for (const m of texte.matchAll(CONSENT_INTERDIT)) noter("case de consentement qui nomme la transmission (texte neutre attendu)", page, m[0]);
+      if (!LIEN_CONFIDENTIALITE.test(bloc)) noter("case de consentement sans lien vers la politique de confidentialite", page);
+    }
 
     /* d) une seule plage horaire, FR et DE : pied, page contact, JSON-LD. */
     const zones = [["pied", bloc(html, "<footer", "</footer>")]];

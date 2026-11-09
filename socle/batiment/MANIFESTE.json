@@ -1,6 +1,6 @@
 {
   "socle": "batiment",
-  "version": 6,
+  "version": 7,
   "note": "Empreintes du contenu normalise (zones libres retirees). Refaire avec: node ops/garde-socle/manifeste.mjs",
   "fichiers": [
     {
@@ -21,7 +21,7 @@
     {
       "source": "src/components/socle/BlocConsentement.tsx",
       "chemin": "src/components/socle/BlocConsentement.tsx",
-      "empreinte": "0c0cdda5ad18e8a63498c39f17c0eab4e23b62ecdded6298e10a93268275a243"
+      "empreinte": "eb4ec31c88d50bf766cab29de72be269fd961fb7cbd1aacc7e0cb9a1c8c3109c"
     },
     {
       "source": "src/components/socle/reserve-widget.css",
@@ -62,7 +62,7 @@
     {
       "source": "../../ops/garde-socle/verifier.mjs",
       "chemin": "scripts/garde-socle.mjs",
-      "empreinte": "4f1918e5a0c6b24776618925cf4de4e1446cc9672f2cd8d6f20f686ca5a6fc19"
+      "empreinte": "175b4804bb1ae589c499fb23103b7b21d800f3f1ba5077c85c1c3c32781c444a"
     }
   ]
 }

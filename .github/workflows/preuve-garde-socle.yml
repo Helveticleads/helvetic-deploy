@@ -41,3 +41,5 @@ jobs:
         run: node ops/garde-socle/preuve-v1-6-1.mjs v1.6.0
       - name: Garde v1.6.2, Telefon, rufen Sie an, une seule plage horaire, exception ueber das Formular
         run: node ops/garde-socle/preuve-v1-6-2.mjs v1.6.1
+      - name: Case de consentement neutre, lien de confidentialite
+        run: node ops/garde-socle/preuve-v1-6-3.mjs v1.6.2

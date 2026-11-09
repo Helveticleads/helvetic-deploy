@@ -11,6 +11,11 @@
  * un consentement affirme par le code n'est pas un consentement. La charte
  * editoriale la rend obligatoire sur tous les formulaires.
  *
+ * Le texte est NEUTRE (Frederic, 04.11 et 09.11, v1.6.3) : il ne dit pas a qui
+ * la demande est transmise ; la transmission a un professionnel s'explique dans
+ * la politique de confidentialite du site, dont le lien porte les derniers mots
+ * (« politique de confidentialité », « Datenschutzerklärung »).
+ *
  * === LE PIEGE ===
  *
  * Un champ `website` que le visiteur ne voit pas et ne peut pas atteindre au
@@ -40,18 +45,18 @@ type Textes = {
 const TEXTES: Record<LangueSocle, Textes> = {
   fr: {
     consentDebut:
-      "J'accepte que ma demande soit confiée à un professionnel de ma région, qui me rappellera à ce sujet. Mes données sont traitées conformément à la ",
+      "J’accepte que mes données soient utilisées pour traiter ma demande. En savoir plus dans la ",
     consentLien: "politique de confidentialité",
-    consentFin: " (nLPD) et ne sont jamais revendues.",
+    consentFin: ".",
     piegeLabel: "Ne pas remplir",
     erreurConsent:
       "Merci d'accepter le traitement de vos données afin de pouvoir vous répondre.",
   },
   de: {
     consentDebut:
-      "Ich bin damit einverstanden, dass meine Anfrage an einen Fachbetrieb aus meiner Region weitergegeben wird und dieser mich dazu zurückruft. Meine Daten werden gemäss der ",
+      "Ich bin einverstanden, dass meine Angaben zur Bearbeitung meiner Anfrage verwendet werden. Mehr dazu in der ",
     consentLien: "Datenschutzerklärung",
-    consentFin: " (DSG) behandelt und niemals weiterverkauft.",
+    consentFin: ".",
     piegeLabel: "Nicht ausfüllen",
     erreurConsent:
       "Bitte stimmen Sie der Bearbeitung Ihrer Daten zu, damit wir Ihnen antworten können.",

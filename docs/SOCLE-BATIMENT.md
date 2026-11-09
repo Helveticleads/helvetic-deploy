@@ -87,6 +87,7 @@ reste une exception ; la regle ne vaut que pour les 29 sites du batiment.
 | Ce qu'il faut | Verifie par |
 |---|---|
 | `src/lib/api.ts` identique au gabarit : contrat B, dit « jardin » | garde socle, empreinte |
+| La case de consentement est NEUTRE (v1.6.3, Frederic 04.11 et 09.11) : « J’accepte que mes données soient utilisées pour traiter ma demande. En savoir plus dans la politique de confidentialité. » / « Ich bin einverstanden, dass meine Angaben zur Bearbeitung meiner Anfrage verwendet werden. Mehr dazu in der Datenschutzerklärung. », le lien de confidentialite du site portant les derniers mots ; elle ne nomme ni le professionnel ni la transmission, qui s'expliquent dans la politique de confidentialite | garde socle, empreinte de `BlocConsentement.tsx` ; garde des pages ; `preuve-v1-6-3.mjs` |
 | Une VRAIE case de consentement, `required`, dont la valeur part dans `consent` | garde socle, empreinte de `BlocConsentement.tsx` |
 | `consent: true` n'est JAMAIS ecrit en dur | garde socle, mesure d'effet |
 | Un piege anti-robot rendu, hors ecran et hors tabulation, dont la valeur part dans `website` | garde socle, empreinte et mesure d'effet |
@@ -178,7 +179,7 @@ Un socle modifie sans recopie rend les sites ROUGES au prochain build : c'est
 voulu. La garde dit quel fichier et quelle ligne.
 
 **La cle `version` de `MANIFESTE.json` augmente de 1 a chaque version publiee.**
-Decision de Frederic du 02.11.2026. Elle vaut 2 avec la v1.4.0, 3 avec la v1.5.0, 4 avec la v1.6.0, 5 avec la v1.6.1, 6 avec la v1.6.2. Elle s'ecrit dans
+Decision de Frederic du 02.11.2026. Elle vaut 2 avec la v1.4.0, 3 avec la v1.5.0, 4 avec la v1.6.0, 5 avec la v1.6.1, 6 avec la v1.6.2, 7 avec la v1.6.3. Elle s'ecrit dans
 `ops/garde-socle/manifeste.mjs`, avant le tag. Un site non concerne par une
 version garde la valeur de sa derniere recopie : la garde ne lit pas cette cle.
 
