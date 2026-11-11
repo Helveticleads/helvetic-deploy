@@ -30,7 +30,8 @@ const constat = (ok, texte) => { console.log(`${ok ? "OK  " : "ECHEC"} ${texte}`
 /* Garde-fou : aucune requete vers indexnow.org depuis ce processus. */
 const fetchReel = globalThis.fetch;
 const versIndexnow = [];
-globalThis.fetch = (u, o) => { if (String(u).includes("indexnow.org")) { versIndexnow.push(String(u)); return Promise.reject(new Error("interdit en preuve")); } return fetchReel(u, o); };
+const hoteIndexnow = (u) => { try { const h = new URL(String(u)).hostname; return h === "indexnow.org" || h.endsWith(".indexnow.org"); } catch { return false; } };
+globalThis.fetch = (u, o) => { if (hoteIndexnow(u)) { versIndexnow.push(String(u)); return Promise.reject(new Error("interdit en preuve")); } return fetchReel(u, o); };
 
 /* Serveur local : /indexnow (POST) et /<cle>.txt. */
 const D = "helvetic-dachdecker.ch";
@@ -70,6 +71,7 @@ constat(JSON.stringify([diff.ajoutees, diff.modifiees, diff.retirees]) === JSON.
 constat(differences(null, lireSitemap(APRES)).ajoutees.length === 4, "diff sans sitemap avant : tout le sitemap");
 constat(lireSitemap("<sitemapindex></sitemapindex>") === null && lireSitemap(null) === null, "sitemap illisible ou sitemapindex : null, pas d'exception");
 constat(lireSitemap(SM([[`${U("/x/")}?a=1&amp;b=2`, null]])).has(`${U("/x/")}?a=1&b=2`), "entites XML decodees dans <loc>");
+constat(lireSitemap(SM([[`${U("/y/")}?q=&amp;lt;`, null]])).has(`${U("/y/")}?q=&lt;`), "entites decodees une seule fois (&amp;lt; donne &lt;)");
 
 /* 2. Plafond et filtre du domaine */
 const beaucoup = { premier: true, ajoutees: Array.from({ length: 12000 }, (_, i) => U(`/p${i}/`)), modifiees: [], retirees: [] };

@@ -36,7 +36,8 @@ export function cleDuDomaine(domaine, table = JSON.parse(fs.readFileSync(path.jo
   return typeof cle === "string" && FORME_CLE.test(cle) ? cle : null;
 }
 
-const decoder = (s) => s.replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, '"').replace(/&apos;/g, "'").trim();
+const ENTITES = { amp: "&", lt: "<", gt: ">", quot: '"', apos: "'" };
+const decoder = (s) => s.replace(/&(amp|lt|gt|quot|apos);/g, (_, e) => ENTITES[e]).trim();
 
 /** <urlset> -> Map(loc -> lastmod|null). null si ce n'est pas un urlset lisible. */
 export function lireSitemap(xml) {
