@@ -47,7 +47,7 @@
     {
       "source": "src/lib/api.ts",
       "chemin": "src/lib/api.ts",
-      "empreinte": "41fc1591ac9e7fafc3560cca3b389a3ead0c5e6b865bbeffe9c3b0a71b6688c3"
+      "empreinte": "c94a87d7aa6763dbc1a68b3cc00cbfad8668fa66db384ca71a48092dd48f4510"
     },
     {
       "source": "scripts/socle-404.mjs",
@@ -67,7 +67,7 @@
     {
       "source": "../../ops/garde-socle/verifier.mjs",
       "chemin": "scripts/garde-socle.mjs",
-      "empreinte": "46d84075b2fa644e952b4695e39f35dbb8f008156ec39c30aadf636474e00b7e"
+      "empreinte": "19d806d77895cff1538e402febfc7b727bb9eba6d431480794650c8f4bc19444"
     }
   ]
 }

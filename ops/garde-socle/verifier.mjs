@@ -1231,6 +1231,13 @@ export function mesureEnvoiLead(api) {
     d.push("envoie lead_submit ailleurs que dans signalerLeadSubmit");
   }
   if (!/response\.ok\s*&&\s*estSucces\(/.test(corps)) d.push("ne tient pas un succes pour EXPLICITE (2xx et corps attendu)");
+  /* v1.6.5 (Frederic, 11.11) : UN essai de plus, sur 502, 503, 504 ou reseau coupe seulement, apres 2 s, meme charge. */
+  if (!/export const ESSAI_STATUTS = \[502, 503, 504\];/.test(api)) d.push("ne limite pas le nouvel essai a 502, 503 et 504");
+  if (!/export const ESSAI_ATTENTE_MS = 2000;/.test(api)) d.push("n'attend pas 2 secondes avant le nouvel essai");
+  if ((corps.match(/await envoyer\(\)/g) ?? []).length !== 2 || !/r === null \|\| ESSAI_STATUTS\.includes\(r\.status\)/.test(corps)) {
+    d.push("ne fait pas UN seul nouvel essai, sur reseau coupe ou 502, 503, 504");
+  }
+  if ((corps.match(/JSON\.stringify\(\s*charge\s*\)/g) ?? []).length !== 1) d.push("ne renvoie pas la meme charge (meme event_id) au nouvel essai");
   return d;
 }
 

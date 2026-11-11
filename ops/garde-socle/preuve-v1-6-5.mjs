@@ -250,7 +250,7 @@ async function chargerApi(version) {
     define: { "import.meta.env": "{}" },
     plugins: [{ name: "config", setup(b) {
       b.onResolve({ filter: /^@\/data\/config$/ }, () => ({ path: "config", namespace: "doublure" }));
-      b.onLoad({ filter: /.*/, namespace: "doublure" }, () => ({ contents: 'export const SITE_CONFIG = { domainBare: "helvetique-exemple.ch" };', loader: "js" }));
+      b.onLoad({ filter: /.*/, namespace: "doublure" }, () => ({ contents: 'export const SITE_CONFIG = new Proxy({}, { get: (_, k) => (globalThis.__siteConfig ?? { domainBare: "helvetique-exemple.ch" })[k] });', loader: "js" }));
     } }],
   });
   const f = path.join(tmp, `api-${Math.random().toString(36).slice(2)}.mjs`);
@@ -259,30 +259,37 @@ async function chargerApi(version) {
 }
 const apiActuel = await chargerApi(socleActuel);
 const apiAncien = await chargerApi(socleAncien);
+const MESSAGES_FR_SANS = "Votre demande n'a pas pu être envoyée, même après un second essai. Vos informations sont conservées, merci de réessayer plus tard.";
 const UUID4 = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
-async function envoyer(api, { reponse, langue = "fr", consentAt = "2026-11-11T08:00:00.000Z", jette = false, source }) {
+/* reponses : une liste, une par appel ; « coupe » = reseau coupe. */
+async function envoyer(api, { reponses, langue = "fr", consentAt = "2026-11-11T08:00:00.000Z", source, telephone = "021 000 00 00", ligne }) {
   const journal = [];
+  const envois = [];
   globalThis.window = { location: { href: "https://helvetique-exemple.ch/villes/sion/?utm_source=ads&gclid=abc#formulaire" } };
   globalThis.__socleConsentementAt = consentAt;
-  globalThis.umami = { track: (nom, donnees) => journal.push(["track", nom, donnees]) };
+  globalThis.__siteConfig = { domainBare: "helvetique-exemple.ch", phone: telephone, ...(ligne === undefined ? {} : { ligne }) };
+  globalThis.umami = { track: (nom, donnees) => journal.push(["track", nom, donnees, Date.now()]) };
+  let n = 0;
   globalThis.fetch = async (url, opts) => {
-    journal.push(["fetch", url, opts]);
-    await new Promise((r) => setTimeout(r, 15));
-    if (jette) throw new TypeError("Failed to fetch");
-    journal.push(["reponse", reponse.status]);
-    return { ok: reponse.status >= 200 && reponse.status < 300, status: reponse.status, json: async () => { if (reponse.corps === undefined) throw new SyntaxError("pas du JSON"); return reponse.corps; } };
+    const r = reponses[Math.min(n, reponses.length - 1)];
+    n += 1;
+    envois.push({ url, opts, corps: JSON.parse(opts.body), t: Date.now() });
+    journal.push(["fetch"]);
+    await new Promise((x) => setTimeout(x, 10));
+    if (r === "coupe") throw new TypeError("Failed to fetch");
+    journal.push(["reponse", r.status]);
+    return { ok: r.status >= 200 && r.status < 300, status: r.status, json: async () => { if (r.corps === undefined) throw new SyntaxError("pas du JSON"); return r.corps; } };
   };
   const charge = api.construireCharge({ formType: "contact", nom: "Alex Dupraz", telephone: "0791112233", consent: true, piege: "", langue });
   if (source) charge.source = source;
   let resultat = null, erreur = null;
   try { resultat = await api.submitLead(charge); } catch (e) { erreur = e.message; }
-  const envoi = journal.find((j) => j[0] === "fetch");
-  const corps = envoi ? JSON.parse(envoi[2].body) : null;
-  delete globalThis.window; delete globalThis.__socleConsentementAt; delete globalThis.umami; delete globalThis.fetch;
-  return { journal, corps, entetes: envoi?.[2].headers ?? {}, resultat, erreur, tracks: journal.filter((j) => j[0] === "track") };
+  delete globalThis.window; delete globalThis.__socleConsentementAt; delete globalThis.umami; delete globalThis.fetch; delete globalThis.__siteConfig;
+  return { journal, envois, corps: envois[0]?.corps ?? null, entetes: envois[0]?.opts.headers ?? {}, resultat, erreur, tracks: journal.filter((j) => j[0] === "track") };
 }
+const OK201 = { status: 201, corps: { lead_id: 812 } };
 {
-  const r = await envoyer(apiActuel, { reponse: { status: 201, corps: { lead_id: 812 } }, source: "contact" });
+  const r = await envoyer(apiActuel, { reponses: [OK201], source: "contact" });
   constat(UUID4.test(r.corps?.event_id ?? ""), `envoi : event_id UUID v4 (${r.corps?.event_id})`);
   constat(r.entetes["idempotency-key"] === r.corps.event_id, "envoi : en-tete Idempotency-Key = event_id");
   constat(r.corps.origine_demande === "https://helvetique-exemple.ch/villes/sion/", `envoi : origine_demande sans parametres de suivi ni ancre (${r.corps.origine_demande})`);
@@ -291,36 +298,55 @@ async function envoyer(api, { reponse, langue = "fr", consentAt = "2026-11-11T08
   constat(r.corps.consent === true && r.corps.website === "" && r.corps.name === "Alex Dupraz", "envoi : consent, piege et nom inchanges");
   const iReponse = r.journal.findIndex((j) => j[0] === "reponse");
   const iTrack = r.journal.findIndex((j) => j[0] === "track");
-  constat(r.tracks.length === 1 && r.tracks[0][1] === "lead_submit" && iTrack > iReponse && r.tracks[0][2].event_id === r.corps.event_id, "succes 201 : un seul lead_submit, APRES la reponse, avec le meme event_id");
+  constat(r.envois.length === 1 && r.tracks.length === 1 && r.tracks[0][1] === "lead_submit" && iTrack > iReponse && r.tracks[0][2].event_id === r.corps.event_id, "succes 201 : un envoi, un seul lead_submit, APRES la reponse, meme event_id");
   constat(r.erreur === null && r.resultat.event_id === r.corps.event_id && r.resultat.lead_id === 812, "succes 201 : resolu (le site affiche merci)");
-  const r2 = await envoyer(apiActuel, { reponse: { status: 201, corps: { lead_id: 813 } } });
-  constat(r2.corps.event_id !== r.corps.event_id, "deux envois : deux event_id differents");
+  const r2 = await envoyer(apiActuel, { reponses: [OK201] });
+  constat(r2.corps.event_id !== r.corps.event_id, "deux envois du visiteur : deux event_id differents");
 }
 {
-  const r = await envoyer(apiActuel, { reponse: { status: 200, corps: { ok: true, lead_id: 812, deja_recu: true } } });
+  const r = await envoyer(apiActuel, { reponses: [{ status: 200, corps: { ok: true, lead_id: 812, deja_recu: true } }] });
   constat(r.erreur === null && r.tracks.length === 0, "doublon 200 deja_recu : resolu, AUCUN lead_submit");
 }
-for (const [libelle, reponse, langue, attendu] of [
-  ["2xx au corps vide {}", { status: 201, corps: {} }, "fr", "Votre demande n'a pas pu être enregistrée."],
-  ["2xx sans JSON", { status: 200, corps: undefined }, "fr", "Votre demande n'a pas pu être enregistrée."],
-  ["500", { status: 500, corps: { ok: true } }, "fr", "Votre demande n'a pas pu être enregistrée."],
-  ["400 telephone_requis, site DE", { status: 400, corps: { error: "telephone_requis" } }, "de", "Ihre Anfrage konnte nicht gespeichert werden."],
-  ["429, site DE", { status: 429, corps: undefined }, "de", "Ihre Anfrage konnte nicht gespeichert werden."],
-]) {
-  const r = await envoyer(apiActuel, { reponse, langue });
-  constat(r.erreur?.startsWith(attendu) && /conservées|bleiben erhalten/.test(r.erreur) && r.tracks.length === 0, `echec ${libelle} : erreur claire (« ${r.erreur} »), aucun lead_submit, pas de merci`);
-}
-for (const langue of ["fr", "de"]) {
-  const r = await envoyer(apiActuel, { reponse: { status: 201, corps: { lead_id: 1 } }, langue, jette: true });
-  constat(r.erreur?.startsWith(langue === "fr" ? "Connexion impossible" : "Keine Verbindung") && r.tracks.length === 0, `reseau coupe ${langue} : « ${r.erreur} », aucun lead_submit`);
+/* L'essai automatique (Frederic, 11.11). */
+for (const [premier, libelle] of [[{ status: 503, corps: undefined }, "503"], [{ status: 502, corps: undefined }, "502"], [{ status: 504, corps: undefined }, "504"], ["coupe", "reseau coupe"]]) {
+  const r = await envoyer(apiActuel, { reponses: [premier, OK201] });
+  const ecart = r.envois.length === 2 ? r.envois[1].t - r.envois[0].t : 0;
+  constat(r.envois.length === 2 && ecart >= 1900 && r.envois[0].opts.body === r.envois[1].opts.body && r.envois[1].opts.headers["idempotency-key"] === r.corps.event_id,
+    `${libelle} puis 201 : un nouvel essai ${ecart} ms plus tard, meme charge et meme event_id (corps et Idempotency-Key)`);
+  constat(r.erreur === null && r.tracks.length === 1 && r.tracks[0][2].event_id === r.corps.event_id, `${libelle} puis 201 : merci, un seul lead_submit, meme event_id`);
 }
 {
-  const r = await envoyer(apiActuel, { reponse: { status: 201, corps: { lead_id: 1 } }, consentAt: null });
+  const r = await envoyer(apiActuel, { reponses: [{ status: 503 }, { status: 503 }, OK201] });
+  constat(r.envois.length === 2 && r.tracks.length === 0 && r.erreur === "Votre demande n'a pas pu être envoyée, même après un second essai. Vos informations sont conservées : merci de réessayer plus tard ou d'appeler le 021 000 00 00.",
+    `503 deux fois, site FR avec numero : deux envois, aucun lead_submit, « ${r.erreur} »`);
+  const s = await envoyer(apiActuel, { reponses: ["coupe", "coupe"], telephone: "" });
+  constat(s.envois.length === 2 && s.tracks.length === 0 && s.erreur === "Votre demande n'a pas pu être envoyée, même après un second essai. Vos informations sont conservées, merci de réessayer plus tard.", `reseau coupe deux fois, site FR sans numero : « ${s.erreur} »`);
+  const l = await envoyer(apiActuel, { reponses: [{ status: 503 }, { status: 503 }], ligne: false });
+  constat(l.erreur === MESSAGES_FR_SANS, "503 deux fois, site FR avec ligne: false : message sans numero");
+  const de = await envoyer(apiActuel, { reponses: [{ status: 504 }, { status: 504 }], langue: "de", telephone: "044 000 00 00" });
+  constat(de.envois.length === 2 && de.tracks.length === 0 && de.erreur === "Ihre Anfrage konnte auch nach einem zweiten Versuch nicht gesendet werden. Ihre Angaben bleiben erhalten, bitte versuchen Sie es später erneut." && !/\d{3}/.test(de.erreur), `504 deux fois, site DE : aucun numero, « ${de.erreur} »`);
+}
+for (const [libelle, reponse, langue, attendu] of [
+  ["400 telephone_requis", { status: 400, corps: { error: "telephone_requis" } }, "fr", "Votre demande n'a pas pu être envoyée. Vos informations sont conservées, merci de réessayer."],
+  ["429", { status: 429, corps: undefined }, "fr", "Votre demande n'a pas pu être envoyée. Vos informations sont conservées, merci de réessayer."],
+  ["500", { status: 500, corps: { ok: true } }, "fr", "Votre demande n'a pas pu être envoyée. Vos informations sont conservées, merci de réessayer."],
+  ["2xx au corps vide {}", { status: 201, corps: {} }, "fr", "Votre demande n'a pas pu être envoyée. Vos informations sont conservées, merci de réessayer."],
+  ["2xx sans JSON", { status: 200, corps: undefined }, "fr", "Votre demande n'a pas pu être envoyée. Vos informations sont conservées, merci de réessayer."],
+  ["400, site DE", { status: 400, corps: { error: "telephone_requis" } }, "de", "Ihre Anfrage konnte nicht gesendet werden. Ihre Angaben bleiben erhalten, bitte versuchen Sie es erneut."],
+  ["500, site DE", { status: 500, corps: undefined }, "de", "Ihre Anfrage konnte nicht gesendet werden. Ihre Angaben bleiben erhalten, bitte versuchen Sie es erneut."],
+]) {
+  const r = await envoyer(apiActuel, { reponses: [reponse, OK201], langue });
+  constat(r.envois.length === 1 && r.erreur === attendu && r.tracks.length === 0, `${libelle} : AUCUN nouvel essai, aucun lead_submit, « ${r.erreur} »`);
+}
+{
+  const r = await envoyer(apiActuel, { reponses: [OK201], consentAt: null });
   constat(!Number.isNaN(Date.parse(r.corps.consentement_at)), "case cochee sans instant releve : consentement_at = instant de l'envoi");
-  const v = await envoyer(apiAncien, { reponse: { status: 201, corps: { lead_id: 1 } } });
+  const v = await envoyer(apiAncien, { reponses: [OK201] });
   constat(!v.corps.event_id && !v.corps.origine_demande && !v.corps.consentement_at && v.corps.source !== "formulaire" && v.tracks.length === 0, `contre-epreuve ${refAncienne} : ni event_id, ni origine_demande, ni consentement_at, ni source « formulaire », ni lead_submit`);
-  const w = await envoyer(apiAncien, { reponse: { status: 201, corps: {} } });
+  const w = await envoyer(apiAncien, { reponses: [{ status: 201, corps: {} }] });
   constat(w.erreur === null, `contre-epreuve ${refAncienne} : un 2xx au corps vide valait succes (merci)`);
+  const x = await envoyer(apiAncien, { reponses: [{ status: 503 }, OK201] });
+  constat(x.envois.length === 1 && x.erreur !== null, `contre-epreuve ${refAncienne} : un 503 n'etait pas reessaye`);
 }
 const bloc = fs.readFileSync(path.join(socleActuel, "socle/batiment/src/components/socle/BlocConsentement.tsx"), "utf8");
 constat(/__socleConsentementAt = e\.target\.checked \? new Date\(\)\.toISOString\(\) : null;\s*onConsent\(e\.target\.checked\)/.test(bloc), "BlocConsentement : l'instant de la case est releve au clic, puis onConsent");
@@ -334,9 +360,13 @@ for (const [libelle, muter, attendu] of [
   ["sans origine_demande", (s) => s.replace("origine_demande: origineDemande(),", ""), "n'envoie pas origine_demande"],
   ["sans consentement_at", (s) => s.replace(/consentement_at: payload\.consent[^\n]*\n/, "\n"), "n'envoie pas consentement_at"],
   ["source « hero »", (s) => s.replace('    source: "formulaire",\n    event_id', '    source: "hero",\n    event_id'), "n'envoie pas source « formulaire »"],
-  ["lead_submit avant la reponse", (s) => s.replace("  let response: Response;", "  signalerLeadSubmit(eventId);\n  let response: Response;"), "n'envoie pas lead_submit APRES la reponse"],
+  ["lead_submit avant la reponse", (s) => s.replace("  let response = await envoyer();", "  signalerLeadSubmit(eventId);\n  let response = await envoyer();"), "n'envoie pas lead_submit APRES la reponse"],
   ["lead_submit ecrit dans submitLead", (s) => s.replace("  return resultat;", '  (globalThis as any).umami?.track("lead_submit");\n  return resultat;'), "ailleurs que dans signalerLeadSubmit"],
   ["succes sur un simple 2xx", (s) => s.replace("response.ok && estSucces(corps)", "response.ok"), "EXPLICITE"],
+  ["nouvel essai aussi sur 500", (s) => s.replace("export const ESSAI_STATUTS = [502, 503, 504];", "export const ESSAI_STATUTS = [500, 502, 503, 504];"), "502, 503 et 504"],
+  ["nouvel essai sans attente", (s) => s.replace("export const ESSAI_ATTENTE_MS = 2000;", "export const ESSAI_ATTENTE_MS = 0;"), "2 secondes"],
+  ["deux nouveaux essais", (s) => s.replace("    response = await envoyer();\n", "    response = await envoyer();\n    response = await envoyer();\n"), "UN seul nouvel essai"],
+  ["charge reconstruite au nouvel essai", (s) => s.replace("body: JSON.stringify(charge),", "body: JSON.stringify({ ...charge, event_id: nouvelEventId() }),"), "meme charge"],
 ]) {
   const m = muter(apiSocle);
   constat(m !== apiSocle && mesureEnvoiLead(m).some((x) => x.includes(attendu)), `garde : api.ts ${libelle} : rouge`);

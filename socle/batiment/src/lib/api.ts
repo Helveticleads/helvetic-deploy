@@ -92,16 +92,43 @@ export type LeadResult = { lead_id?: string | number; ok?: boolean; success?: bo
  * `event_id`, et jamais pour un doublon (`deja_recu`). Aucune cle ni aucun
  * secret ici : `site_key` et la cle de service sont l'affaire du relais serveur.
  */
-const MESSAGES = {
+/*
+ * Messages d'erreur, valides par l'architecture (Frederic, 11.11) : une phrase
+ * dit ce qui s'est passe, une dit quoi faire ; vouvoiement ; aucune promesse
+ * de delai ni de gratuite. Apres le second essai, un site qui affiche un
+ * numero le donne (lu dans sa configuration, jamais ecrit ici). Un site DE
+ * n'affiche aucun numero (regle du telephone du batiment) : son message n'en
+ * a donc jamais.
+ */
+export const MESSAGES = {
   fr: {
-    reseau: "Connexion impossible : votre demande n'est pas partie. Vos informations sont conservées, merci de réessayer dans un instant.",
-    echec: "Votre demande n'a pas pu être enregistrée. Vos informations sont conservées, merci de réessayer dans un instant.",
+    echec: "Votre demande n'a pas pu être envoyée. Vos informations sont conservées, merci de réessayer.",
+    secondEssai: "Votre demande n'a pas pu être envoyée, même après un second essai. Vos informations sont conservées, merci de réessayer plus tard.",
+    secondEssaiNumero: (numero: string) =>
+      `Votre demande n'a pas pu être envoyée, même après un second essai. Vos informations sont conservées : merci de réessayer plus tard ou d'appeler le ${numero}.`,
   },
   de: {
-    reseau: "Keine Verbindung: Ihre Anfrage wurde nicht gesendet. Ihre Angaben bleiben erhalten, bitte versuchen Sie es in einem Moment erneut.",
-    echec: "Ihre Anfrage konnte nicht gespeichert werden. Ihre Angaben bleiben erhalten, bitte versuchen Sie es in einem Moment erneut.",
+    echec: "Ihre Anfrage konnte nicht gesendet werden. Ihre Angaben bleiben erhalten, bitte versuchen Sie es erneut.",
+    secondEssai: "Ihre Anfrage konnte auch nach einem zweiten Versuch nicht gesendet werden. Ihre Angaben bleiben erhalten, bitte versuchen Sie es später erneut.",
   },
 };
+
+/*
+ * v1.6.5, essai automatique (Frederic, 11.11) : sur 502, 503, 504 ou un
+ * reseau coupe, UN seul nouvel essai, 2 secondes plus tard, avec le MEME
+ * event_id (corps et Idempotency-Key), sans nouveau clic. Jamais sur 400, 429
+ * ni 500 : un 500 peut suivre un envoi deja enregistre.
+ */
+export const ESSAI_STATUTS = [502, 503, 504];
+export const ESSAI_ATTENTE_MS = 2000;
+
+/** Le numero que le site affiche, lu dans sa configuration ; aucun sur un site DE ni avec `ligne: false`. */
+function numeroAffiche(langue: "fr" | "de"): string | null {
+  const c = SITE_CONFIG as { phone?: string; ligne?: boolean };
+  if (langue === "de" || c.ligne === false) return null;
+  const n = (c.phone ?? "").trim();
+  return n || null;
+}
 
 /** Un identifiant unique (UUID v4) pour cet envoi. */
 export function nouvelEventId(): string {
@@ -156,16 +183,29 @@ export async function submitLead(payload: LeadPayload): Promise<LeadResult> {
     /* l'instant de la case ; a defaut (case cochee sans passer par onChange), l'instant de l'envoi */
     consentement_at: payload.consent ? instant || new Date().toISOString() : undefined,
   };
-  let response: Response;
-  try {
-    response = await fetch(`${API_BASE}/api/leads`, {
-      method: "POST",
-      headers: { "content-type": "application/json", accept: "application/json", "idempotency-key": eventId },
-      body: JSON.stringify(charge),
-    });
-  } catch {
-    throw new Error(MESSAGES[langue].reseau);
+  /* Un envoi : la reponse, ou null si le reseau a coupe. La MEME charge et le MEME event_id a chaque essai. */
+  const envoyer = async (): Promise<Response | null> => {
+    try {
+      return await fetch(`${API_BASE}/api/leads`, {
+        method: "POST",
+        headers: { "content-type": "application/json", accept: "application/json", "idempotency-key": eventId },
+        body: JSON.stringify(charge),
+      });
+    } catch {
+      return null;
+    }
+  };
+  let response = await envoyer();
+  const aReessayer = (r: Response | null) => r === null || ESSAI_STATUTS.includes(r.status);
+  if (aReessayer(response)) {
+    await new Promise((fin) => setTimeout(fin, ESSAI_ATTENTE_MS));
+    response = await envoyer();
+    if (aReessayer(response)) {
+      const numero = numeroAffiche(langue);
+      throw new Error(numero && langue === "fr" ? MESSAGES.fr.secondEssaiNumero(numero) : MESSAGES[langue].secondEssai);
+    }
   }
+  if (response === null) throw new Error(MESSAGES[langue].echec);
 
   let corps: unknown = null;
   try {
