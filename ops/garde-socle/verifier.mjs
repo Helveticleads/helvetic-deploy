@@ -1098,6 +1098,57 @@ export function reglageSlashFinal(site) {
   return m ? m[1] === "true" : null;
 }
 
+/*
+ * v1.6.7 (trou releve par AUDIT, Frederic 11.11) : les <link rel="alternate" hreflang>.
+ * Toute adresse est absolue, en https. MEME domaine : traitee comme le canonical,
+ * forme du reglage slashFinal ET page presente dans le build (ni le chemin d'une
+ * autre page, ni une ancienne adresse), sans parametre ni ancre ; la balise de la
+ * langue de la page (<html lang>, x-default exclu) est egale au canonical. AUTRE
+ * domaine (jumeau FR/DE) : absolue, https, sans parametre ; son etat reel
+ * (redirection, reciprocite) ne se prouve pas au build. Meme hreflang deux fois : rouge.
+ */
+export function balisesHreflang(html) {
+  return [...html.matchAll(/<link\b[^>]*>/gi)]
+    .map((m) => m[0])
+    .filter((t) => /\brel="alternate"/i.test(t) && /\bhreflang="/i.test(t))
+    .map((t) => ({ langue: (t.match(/\bhreflang="([^"]*)"/i) ?? [])[1].trim(), href: ((t.match(/\bhref="([^"]*)"/i) ?? [])[1] ?? "").trim().replace(/&amp;/g, "&") }));
+}
+/** La page du build qui sert ce chemin (« /a/b/ » ou « /a/b ») existe-t-elle ? */
+export function pageExiste(chemin, presentes) {
+  const c = chemin.replace(/^\/+|\/+$/g, "");
+  return c === "" ? presentes.has("index.html") : presentes.has(`${c}/index.html`) || presentes.has(`${c}.html`);
+}
+/** Les ecarts hreflang d'une page : [cle, detail]. `slash` null : forme non controlee. */
+export function ecartsHreflang(html, domaine, slash, presentes) {
+  const out = [];
+  const balises = balisesHreflang(html);
+  if (!balises.length) return out;
+  const vues = new Map();
+  for (const b of balises) vues.set(b.langue.toLowerCase(), (vues.get(b.langue.toLowerCase()) ?? 0) + 1);
+  for (const [k, n] of vues) if (n > 1) out.push(["hreflang en double sur la page", `${k} x${n}`]);
+  const reDomaine = domaine ? new RegExp(`^https://(?:www\\.)?${domaine.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(?=[/?#]|$)`, "i") : null;
+  const canonical = (((html.match(/<link\b[^>]*\brel="canonical"[^>]*>/i) ?? [])[0] ?? "").match(/\bhref="([^"]*)"/) ?? [])[1]?.trim() ?? null;
+  const langue = ((html.match(/<html\b[^>]*\blang="([^"]*)"/i) ?? [])[1] ?? "").toLowerCase().split("-")[0];
+  for (const b of balises) {
+    const tag = `${b.langue} ${b.href}`;
+    if (!/^https:\/\/[^/?#]+/i.test(b.href)) {
+      out.push(["hreflang dont l'adresse n'est pas absolue en https", tag]);
+      continue;
+    }
+    if (!reDomaine || !reDomaine.test(b.href)) {
+      if (b.href.includes("?")) out.push(["hreflang vers un autre domaine avec parametre", tag]);
+      continue;
+    }
+    if (/[?#]/.test(b.href)) out.push(["hreflang avec parametre ou ancre", tag]);
+    const chemin = b.href.replace(reDomaine, "").split(/[?#]/)[0] || "/";
+    if (slash !== null && horsForme(b.href, domaine, slash)) out.push([`hreflang qui n'a pas la forme du reglage slashFinal: ${slash}`, tag]);
+    else if (!pageExiste(chemin, presentes)) out.push(["hreflang vers une page absente du build", tag]);
+    const l = b.langue.toLowerCase();
+    if (langue && canonical && l !== "x-default" && l.split("-")[0] === langue && b.href !== canonical) out.push(["hreflang de la langue de la page different du canonical", `${tag} (canonical ${canonical})`]);
+  }
+  return out;
+}
+
 export function mesureTelephonePages(site, dossierPages, defauts) {
   const regle = regleTelephone(site);
   if (regle.parc) return;
@@ -1112,6 +1163,7 @@ export function mesureTelephonePages(site, dossierPages, defauts) {
   };
   const numeroNormal = regle.numero.replace(/\s+/g, " ");
   const pages = pagesHtml(dossierPages);
+  const presentes = new Set(pages.map((p) => path.relative(dossierPages, p).split(path.sep).join("/")));
   const fConfig = path.join(site, "src/data/config.ts");
   const texteConfig = fs.existsSync(fConfig) ? lire(fConfig) : "";
   /* `domainBare: "..."` sur les 29 sites (11.11), sinon `domain: "..."`. */
@@ -1152,6 +1204,9 @@ export function mesureTelephonePages(site, dossierPages, defauts) {
         if (c) noter(`balise canonical qui n'a pas la forme du reglage slashFinal: ${slash}`, page, c);
       }
     }
+
+    /* v1.6.7 : les <link rel="alternate" hreflang>. */
+    for (const [cle, detail] of ecartsHreflang(html, domaine, slash, presentes)) noter(cle, page, detail);
 
     /* d) une seule plage horaire, FR et DE : pied, page contact, JSON-LD ; v1.6.5 (trou 3) : corps des pages (<main>). */
     const zones = [["pied", bloc(html, "<footer", "</footer>")]];
@@ -1241,7 +1296,7 @@ export function mesureTelephonePages(site, dossierPages, defauts) {
 
   const tout = process.env.GARDE_SOCLE_TOUT === "1";
   for (const [cle, liste] of constats) {
-    defauts.push(`${cle.startsWith("case de consentement") ? "consentement" : cle.startsWith("lien interne") || cle.includes("slashFinal") ? "liens" : "telephone"}:${cle} : ${liste.length} page(s)\n      ${liste.slice(0, tout ? liste.length : 8).join("\n      ")}${!tout && liste.length > 8 ? `\n      (+${liste.length - 8}, tout voir : GARDE_SOCLE_TOUT=1)` : ""}`);
+    defauts.push(`${cle.startsWith("case de consentement") ? "consentement" : cle.startsWith("lien interne") || cle.startsWith("hreflang") || cle.includes("slashFinal") ? "liens" : "telephone"}:${cle} : ${liste.length} page(s)\n      ${liste.slice(0, tout ? liste.length : 8).join("\n      ")}${!tout && liste.length > 8 ? `\n      (+${liste.length - 8}, tout voir : GARDE_SOCLE_TOUT=1)` : ""}`);
   }
   return pages.length;
 }

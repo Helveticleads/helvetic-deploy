@@ -49,3 +49,5 @@ jobs:
         run: node ops/garde-socle/preuve-v1-6-5.mjs v1.6.4
       - name: Forme des adresses, reglage slashFinal du site, et numero suivi d'un point
         run: node ops/garde-socle/preuve-v1-6-6.mjs v1.6.5
+      - name: Balises hreflang (forme, page du build, langue de la page, doublons)
+        run: node ops/garde-socle/preuve-v1-6-7.mjs v1.6.6

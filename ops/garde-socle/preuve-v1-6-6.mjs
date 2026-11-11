@@ -185,7 +185,7 @@ constat(trouve(ANCIEN, "Appelez le 044 555 66 77.").length === 0 && trouve(ANCIE
 }
 
 const man = JSON.parse(fs.readFileSync(path.join(racine, "socle/batiment/MANIFESTE.json"), "utf8"));
-constat(man.version === 10, `manifeste : version ${man.version} (attendu 10)`);
+constat(man.version >= 10, `manifeste : version ${man.version} (attendu 10 ou plus, la v1.6.6 l'a porte a 10)`);
 
 fs.rmSync(tmp, { recursive: true, force: true });
 if (echecs > 0) {
