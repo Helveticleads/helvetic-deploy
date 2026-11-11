@@ -86,6 +86,26 @@ const CHEMINS: Record<CleChemin, string> = Object.assign(
 export const CHEMIN_CONTACT = CHEMINS.contact;
 
 /*
+ * v1.6.5 (Frederic, 11.11) : un lien interne pointe DIRECTEMENT vers l'adresse
+ * canonique, avec « / » final, celle des sitemaps et des balises canonical.
+ * L'adresse sans « / » repond par une redirection 301 : chaque clic et chaque
+ * passage de Google la traversait. Les chemins du site (`CHEMINS`, `NAV`,
+ * `CHEMIN_CONTACT`) restent ecrits sans « / » : ce sont aussi ses routes. Le
+ * « / » s'ajoute au rendu du lien. Restent tels quels : la racine, un lien
+ * externe ou `//`, un fichier (.xml, .pdf, image...), et l'ancre ou les
+ * parametres, gardes apres le « / ».
+ */
+const FICHIER = /\.[a-z0-9]{2,5}$/i;
+export function lienCanonique(href: string): string {
+  if (!href.startsWith("/") || href.startsWith("//")) return href;
+  const i = href.search(/[?#]/);
+  const chemin = i < 0 ? href : href.slice(0, i);
+  const suite = i < 0 ? "" : href.slice(i);
+  if (chemin.endsWith("/") || FICHIER.test(chemin)) return href;
+  return `${chemin}/${suite}`;
+}
+
+/*
  * Le libelle du bouton de devis, propre au site. Vide, le bouton dit « Demande
  * gratuite » ou « Kostenlose Anfrage » (seule la demande est gratuite, jamais
  * le devis : Frederic, 09.11). Un site de rendez-vous ecrit ici

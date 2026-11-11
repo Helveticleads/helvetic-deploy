@@ -50,7 +50,7 @@ import { Link, useLocation } from "wouter";
 import { Menu, Phone, X } from "lucide-react";
 import { Logo } from "@/components/Logo";
 import { CanalWhatsapp } from "@/components/socle/CanalWhatsapp";
-import { CHEMIN_CONTACT, NAV, NAV_TELEPHONE, TEXTES, telephone } from "@/data/navigation";
+import { CHEMIN_CONTACT, NAV, NAV_TELEPHONE, TEXTES, lienCanonique, telephone } from "@/data/navigation";
 import { SITE_CONFIG, phoneMention } from "@/data/config";
 import { cn } from "@/lib/utils";
 import "@/components/socle/reserve-widget.css";
@@ -139,7 +139,7 @@ export function Header() {
           {NAV.map((item) => (
             <Link
               key={item.href}
-              href={item.href}
+              href={lienCanonique(item.href)}
               aria-current={marqueExact(item.href) ? "page" : undefined}
               className={cn(
                 "link-underline whitespace-nowrap text-sm font-medium",
@@ -183,7 +183,7 @@ export function Header() {
           ) : null}
 
           <Link
-            href={CHEMIN_CONTACT}
+            href={lienCanonique(CHEMIN_CONTACT)}
             className={cn(BOUTON_DEVIS, BOUTON_DEVIS_MD, "hidden lg:inline-flex")}
           >
             {TEXTES.devis}
@@ -235,7 +235,7 @@ export function Header() {
           {NAV_TELEPHONE.map((item) => (
             <Link
               key={item.href}
-              href={item.href}
+              href={lienCanonique(item.href)}
               onClick={() => setOuvert(false)}
               aria-current={marqueExact(item.href) ? "page" : undefined}
               className="border-b border-border/60 py-3 text-base font-medium last:border-0 aria-[current=page]:text-accent"
@@ -246,7 +246,7 @@ export function Header() {
 
           <CanalWhatsapp variante="plein" libelle={TEXTES.whatsapp} className="mt-4 flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-[#128C7E] text-base font-semibold text-white" />
 
-          <Link href={CHEMIN_CONTACT} className={cn(BOUTON_DEVIS, BOUTON_DEVIS_LG, "mt-4 w-full")}>
+          <Link href={lienCanonique(CHEMIN_CONTACT)} className={cn(BOUTON_DEVIS, BOUTON_DEVIS_LG, "mt-4 w-full")}>
             {TEXTES.devisLong}
           </Link>
         </nav>

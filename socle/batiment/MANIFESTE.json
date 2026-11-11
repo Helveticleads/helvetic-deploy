@@ -6,12 +6,12 @@
     {
       "source": "src/components/layout/Header.tsx",
       "chemin": "src/components/layout/Header.tsx",
-      "empreinte": "21053a9693d86c11d6c2e4a31f7b7fa0ef053188841b024813d7ca46adbe7bd1"
+      "empreinte": "8ebeedd3ee509da06e6f4061308d790389d4c970b4b5151d49bd3f44b5c765f4"
     },
     {
       "source": "src/components/layout/StickyMobileCTA.tsx",
       "chemin": "src/components/layout/StickyMobileCTA.tsx",
-      "empreinte": "d2d480221a5e820358de4b4e098eae5c1c6a01226d0e86a91d1616c6f033936a"
+      "empreinte": "c7f19b8bda2d948d26a5148b2bff7d1ca521fad961fe779392dd72895ba5f942"
     },
     {
       "source": "src/components/socle/CanalWhatsapp.tsx",
@@ -37,12 +37,12 @@
       "source": "src/components/HeroForm.tsx",
       "chemin": "src/components/HeroForm.tsx",
       "optionnel": true,
-      "empreinte": "371c3ac7b75aa05d9bfb6b40d5705733bf3aee72e974b4072213a399db5f107e"
+      "empreinte": "eb743c067d4689ee3fc1945d0bce3b2b67ec0fb8db5e44932777a545f1028e17"
     },
     {
       "source": "src/data/navigation.ts",
       "chemin": "src/data/navigation.ts",
-      "empreinte": "0e15e377dcf894f481542fcba8d820622975b73ad40759e9e7fb9a6979220267"
+      "empreinte": "f7ef471ef147da2a07ea7f14f3f72b087707f50cd5c40c0b7b77830b1b59be46"
     },
     {
       "source": "src/lib/api.ts",
@@ -62,7 +62,7 @@
     {
       "source": "../../ops/garde-socle/verifier.mjs",
       "chemin": "scripts/garde-socle.mjs",
-      "empreinte": "50d0773d0679052dca158eecc44fd16512acdf809c1d231470f0b86e674a0ec3"
+      "empreinte": "aaf22fa70a960b54dd6547faf993f9b0b0410ae44df62204504f4ffa6d1b8a0a"
     }
   ]
 }

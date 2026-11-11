@@ -169,7 +169,9 @@ const hero = fs.readFileSync(path.join(actuel, "socle/batiment/src/components/He
 const heroAncien = fs.readFileSync(path.join(ancien, "socle/batiment/src/components/HeroForm.tsx"), "utf8");
 constat(hero.split(`${BOUTON_HERO}Envoyer ma demande\n`).length === 2 && !/gratuit/i.test(hero), "HeroForm : bouton « Envoyer ma demande », aucune autre mention de gratuite");
 constat(heroAncien.includes(`${BOUTON_HERO}Recevoir mon devis gratuit`), `contre-epreuve ${refAncienne} : le bouton disait « Recevoir mon devis gratuit »`);
-const lignesDiff = hero.split("\n").filter((l, i) => l !== heroAncien.split("\n")[i]);
+/* v1.6.5 (Frederic, 11.11) : le lien de confidentialite prend le « / » final ; meme substitution exacte dans l'ancien. */
+const heroAncienV165 = heroAncien.replace('<Link href="/politique-confidentialite" className', '<Link href="/politique-confidentialite/" className');
+const lignesDiff = hero.split("\n").filter((l, i) => l !== heroAncienV165.split("\n")[i]);
 constat(hero.split("\n").length === heroAncien.split("\n").length && lignesDiff.length === 1 && lignesDiff[0].includes("Envoyer ma demande"), "HeroForm : rien d'autre ne change (une seule ligne differente)");
 
 /* 4. Aucun fichier du socle ne promet un devis gratuit. */

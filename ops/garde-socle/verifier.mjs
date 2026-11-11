@@ -995,6 +995,24 @@ function pagesHtml(dir) {
   return out.sort();
 }
 
+/*
+ * v1.6.5 (Frederic, 11.11) : un lien interne d'une page servie pointe vers
+ * l'adresse canonique, avec « / » final. L'adresse sans « / » repond par une
+ * redirection 301 (mesure en ligne du 11.11, 5 sites, un seul saut). Interne :
+ * un chemin « /... » ou une adresse du domaine du site (`domain:` de la
+ * configuration). Restent hors regle : la racine, un fichier (.xml, .pdf,
+ * image...), une ancre ou des parametres seuls, un lien externe, mailto: et tel:.
+ */
+const FICHIER_LIEN = /\.[a-z0-9]{2,5}$/i;
+export function lienSansSlash(href, domaine) {
+  let h = href.trim().replace(/&amp;/g, "&");
+  if (domaine) h = h.replace(new RegExp(`^https?://(?:www\\.)?${domaine.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(?=[/?#]|$)`, "i"), "");
+  if (!h.startsWith("/") || h.startsWith("//")) return null;
+  const chemin = h.split(/[?#]/)[0];
+  if (chemin === "/" || chemin.endsWith("/") || FICHIER_LIEN.test(chemin)) return null;
+  return chemin;
+}
+
 export function mesureTelephonePages(site, dossierPages, defauts) {
   const regle = regleTelephone(site);
   if (regle.parc) return;
@@ -1009,6 +1027,8 @@ export function mesureTelephonePages(site, dossierPages, defauts) {
   };
   const numeroNormal = regle.numero.replace(/\s+/g, " ");
   const pages = pagesHtml(dossierPages);
+  const fConfig = path.join(site, "src/data/config.ts");
+  const domaine = ((fs.existsSync(fConfig) ? lire(fConfig) : "").match(/\bdomain:\s*["']([^"']+)["']/) ?? [])[1]?.trim().toLowerCase().replace(/^https?:\/\//, "").replace(/^www\./, "").replace(/\/+$/, "") ?? null;
 
   for (const p of pages) {
     const page = path.relative(dossierPages, p);
@@ -1019,6 +1039,13 @@ export function mesureTelephonePages(site, dossierPages, defauts) {
       const texte = texteVisible(bloc);
       for (const m of texte.matchAll(CONSENT_INTERDIT)) noter("case de consentement qui nomme la transmission (texte neutre attendu)", page, m[0]);
       if (!LIEN_CONFIDENTIALITE.test(bloc)) noter("case de consentement sans lien vers la politique de confidentialite", page);
+    }
+
+    /* v1.6.5 : les liens internes, vers l'adresse canonique avec « / » final. */
+    const sansSlash = [...html.matchAll(/<a\b[^>]*?\bhref="([^"]*)"/gi)].map((m) => lienSansSlash(m[1], domaine)).filter(Boolean);
+    if (sansSlash.length) {
+      const distincts = [...new Set(sansSlash)];
+      noter("lien interne vers une adresse qui redirige (sans « / » final)", page, `${sansSlash.length} lien(s), ${distincts.length} adresse(s) : ${distincts.slice(0, 3).join(" ")}${distincts.length > 3 ? " ..." : ""}`);
     }
 
     /* d) une seule plage horaire, FR et DE : pied, page contact, JSON-LD ; v1.6.5 (trou 3) : corps des pages (<main>). */
@@ -1102,7 +1129,7 @@ export function mesureTelephonePages(site, dossierPages, defauts) {
 
   const tout = process.env.GARDE_SOCLE_TOUT === "1";
   for (const [cle, liste] of constats) {
-    defauts.push(`${cle.startsWith("case de consentement") ? "consentement" : "telephone"}:${cle} : ${liste.length} page(s)\n      ${liste.slice(0, tout ? liste.length : 8).join("\n      ")}${!tout && liste.length > 8 ? `\n      (+${liste.length - 8}, tout voir : GARDE_SOCLE_TOUT=1)` : ""}`);
+    defauts.push(`${cle.startsWith("case de consentement") ? "consentement" : cle.startsWith("lien interne") ? "liens" : "telephone"}:${cle} : ${liste.length} page(s)\n      ${liste.slice(0, tout ? liste.length : 8).join("\n      ")}${!tout && liste.length > 8 ? `\n      (+${liste.length - 8}, tout voir : GARDE_SOCLE_TOUT=1)` : ""}`);
   }
   return pages.length;
 }
@@ -1116,9 +1143,11 @@ export function mesureTelephonePages(site, dossierPages, defauts) {
  * Aucun fichier du socle, zones libres comprises, ne promet la gratuite du
  * devis : « devis » suivi de « gratuit(s) », « kostenlos… » suivi de
  * « Angebot(e) » ou de « Kostenvoranschlag », sans casse (motif ci-dessous).
+ * v1.6.5 (Frederic, 11.11, par CORRECTIFS BATIMENT) : aussi « kostenlos… »
+ * suivi de « Offerte(n) », dans un bouton ou un libelle du socle.
  * « Demande gratuite » et « Kostenlose Anfrage » passent.
  */
-const DEVIS_GRATUIT = /(?<!\p{L})(?:devis\s+gratuits?|kostenlos\p{L}*\s+(?:Angebot\p{L}*|Kostenvoranschl\p{L}*))(?!\p{L})/giu;
+const DEVIS_GRATUIT = /(?<!\p{L})(?:devis\s+gratuits?|kostenlos\p{L}*\s+(?:Angebot\p{L}*|Kostenvoranschl\p{L}*|Offerte\p{L}*))(?!\p{L})/giu;
 export function devisGratuits(texte) {
   const trouves = [];
   for (const m of texte.matchAll(DEVIS_GRATUIT)) {

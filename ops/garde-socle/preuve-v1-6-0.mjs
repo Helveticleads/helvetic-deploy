@@ -149,13 +149,15 @@ for (const [composant, nom] of [["components/layout/Header.tsx", "Header"], ["co
  * tout le reste du HTML doit etre egal octet pour octet.
  */
 const LIBELLES_V164 = [["Devis gratuit", "Demande gratuite"], ["Demander un devis gratuit", "Demande gratuite et sans engagement"]];
-const libellesV164 = (html) => LIBELLES_V164.reduce((h, [a, b]) => h.split(`>${a}<`).join(`>${b}<`), html);
+/* v1.6.5 (Frederic, 11.11) : les liens internes du socle prennent le « / » final ; meme substitution exacte dans le rendu ancien. */
+const liensV165 = (html) => html.replace(/href="(\/[^"/?#.][^"?#]*?)(?<!\/)"/g, 'href="$1/"');
+const libellesV164 = (html) => liensV165(LIBELLES_V164.reduce((h, [a, b]) => h.split(`>${a}<`).join(`>${b}<`), html));
 const hActuel = await rendre(actuel, "components/layout/Header.tsx", "Header", { name: "Site", phone: "" });
 const hAncien = await rendre(ancien, "components/layout/Header.tsx", "Header", { name: "Site", phone: "" });
-constat(hActuel !== hAncien && hActuel === libellesV164(hAncien), `en-tete sans numero, zones par defaut : HTML identique a ${refAncienne}, aux seuls libelles de la v1.6.4 pres`);
+constat(hActuel !== hAncien && hActuel === libellesV164(hAncien), `en-tete sans numero, zones par defaut : HTML identique a ${refAncienne}, aux seuls libelles de la v1.6.4 et liens avec « / » de la v1.6.5 pres`);
 const hNum = await rendre(actuel, "components/layout/Header.tsx", "Header", NUMERO);
 const hNumAncien = await rendre(ancien, "components/layout/Header.tsx", "Header", NUMERO);
-constat(hNum !== hNumAncien && hNum === libellesV164(hNumAncien), `en-tete avec numero, zones par defaut : HTML identique a ${refAncienne}, aux seuls libelles de la v1.6.4 pres`);
+constat(hNum !== hNumAncien && hNum === libellesV164(hNumAncien), `en-tete avec numero, zones par defaut : HTML identique a ${refAncienne}, aux seuls libelles de la v1.6.4 et liens avec « / » de la v1.6.5 pres`);
 const nav = path.join(actuel, "socle/batiment/src/data/navigation.ts");
 const navDefaut = fs.readFileSync(nav, "utf8");
 fs.writeFileSync(nav, navDefaut.replace("const BOUTON: { devis?: string; devisLong?: string } = {};",

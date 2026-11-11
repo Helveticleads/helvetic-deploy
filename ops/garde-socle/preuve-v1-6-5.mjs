@@ -10,6 +10,9 @@
  *      joignabilite : rouge ; intervention, durees, chantier, exceptions deja
  *      nommees, exemples des guides : vert.
  *   4. DE : « Rufen Sie die Polizei (117), dann uns. » : rouge ; sans « dann uns » : vert.
+ *   5. (Frederic, 11.11) Les liens internes du socle pointent vers l'adresse
+ *      canonique, avec « / » final ; la garde des pages refuse un lien interne
+ *      sans « / » (adresse qui redirige), FR et DE.
  *
  * Chaque cas rouge est rouge pour SA regle (cle du defaut), et la garde de la ref
  * ancienne le laissait passer (contre-epreuve). Aucun reseau, aucun site reel.
@@ -21,6 +24,7 @@ import { execFileSync, spawnSync } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import { createRequire } from "node:module";
 import { fileURLToPath } from "node:url";
 
 const racine = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
@@ -140,6 +144,122 @@ const TENUS = [
 for (const [libelle, langue, pages, vert] of TENUS) {
   constat(garde(actuelle, langue, pages).vert === vert, `audit, deja tenu : ${libelle} : ${vert ? "vert" : "rouge"}`);
 }
+
+/* 5. Les liens internes avec « / » final (Frederic, 11.11). */
+const LIENS = "lien interne vers une adresse qui redirige (sans « / » final)";
+const CONFIG_DOMAINE = (langue) => langue === "de"
+  ? 'export const SITE_CONFIG = { name: "Site", phone: "", phoneMention: "", langue: "de", domain: "helvetic-exemple.ch" };'
+  : `export const SITE_CONFIG = { name: "Site", phone: "${NUM}", phoneMention: "${H}", domain: "helvetique-exemple.ch" };`;
+function gardeLiens(verifier, langue, main) {
+  const pages = langue === "de" ? siteDe(main) : siteFr(main);
+  const d = site(langue, pages);
+  fs.writeFileSync(path.join(d, "src/data/config.ts"), CONFIG_DOMAINE(langue));
+  const r = spawnSync("node", [verifier, d, "--pages", "dist/public"], { encoding: "utf8" });
+  return { vert: r.status === 0 && /GARDE_SOCLE_PAGES_OK/.test(r.stdout), sortie: `${r.stdout}${r.stderr}` };
+}
+for (const [langue, href, libelle] of [
+  ["de", "/staedte", "chemin sans « / »"],
+  ["de", "/leistungen/rohrreinigung#ablauf", "chemin sans « / », ancre"],
+  ["de", "https://helvetic-exemple.ch/kontakt", "adresse absolue du site, sans « / »"],
+  ["fr", "/villes", "chemin sans « / »"],
+  ["fr", "/services/depannage?ville=sion", "chemin sans « / », parametres"],
+]) {
+  const r = gardeLiens(actuelle, langue, `<p><a href="${href}">Lien</a></p>`);
+  const i = r.sortie.split("\n").findIndex((l) => l.includes(`liens:${LIENS}`));
+  constat(!r.vert && i >= 0, `liens ${langue} : « ${href} » (${libelle}) : rouge`);
+  constat(gardeLiens(ancienne, langue, `<p><a href="${href}">Lien</a></p>`).vert, `contre-epreuve ${refAncienne} : liens ${langue} : « ${href} » passait`);
+}
+for (const [langue, href, libelle] of [
+  ["de", "/staedte/", "chemin avec « / »"],
+  ["de", "/leistungen/rohrreinigung/#ablauf", "ancre apres le « / »"],
+  ["de", "https://helvetic-exemple.ch/kontakt/", "adresse absolue avec « / »"],
+  ["de", "/", "racine"],
+  ["de", "/sitemap.xml", "fichier .xml"],
+  ["de", "/merkblatt.pdf", "fichier .pdf"],
+  ["de", "#formular", "ancre seule"],
+  ["de", "https://www.admin.ch/gov", "lien externe"],
+  ["fr", "/villes/?canton=vs", "parametres apres le « / »"],
+  ["fr", "/images/photo.webp", "image"],
+  ["fr", "mailto:contact@exemple.ch", "mailto:"],
+]) {
+  const r = gardeLiens(actuelle, langue, `<p><a href="${href}">Lien</a></p>`);
+  constat(r.vert, `liens ${langue} : « ${href} » (${libelle}) : vert${r.vert ? "" : ` (${r.sortie.split("\n").filter((l) => l.includes("- ")).join(" / ").slice(0, 160)})`}`);
+}
+
+/* Le rendu du socle : en-tete et barre du bas, FR et DE, tous les liens internes avec « / ». */
+execFileSync("npm", ["i", "--prefix", tmp, "--no-audit", "--no-fund", "--silent", "esbuild@0.21.5", "react@18.3.1", "react-dom@18.3.1"], { stdio: ["ignore", "ignore", "inherit"] });
+const require = createRequire(path.join(tmp, "x.js"));
+const esbuild = require("esbuild");
+function extraire(ref) {
+  const d = path.join(tmp, `socle-${ref.replace(/\W/g, "_")}`);
+  fs.mkdirSync(d, { recursive: true });
+  if (ref === "ACTUEL") fs.cpSync(path.join(racine, "socle"), path.join(d, "socle"), { recursive: true });
+  else execFileSync("tar", ["-x", "-C", d], { input: execFileSync("git", ["-C", racine, "archive", ref, "socle"]) });
+  return d;
+}
+async function rendre(version, composant, nomExport, config) {
+  const src = path.join(version, "socle/batiment/src");
+  const DOUBLURES = {
+    "@/components/Logo": `export const Logo = () => "Logo";`,
+    "@/components/socle/CanalWhatsapp": `export const CanalWhatsapp = () => null;`,
+    "@/components/socle/reserve-widget.css": ``,
+    "@/routes": `export const NotFound = () => null; export const pagesForRoute = (h) => h === "/inconnu" ? [NotFound] : [() => null];`,
+    "@/data/config": `export const SITE_CONFIG = ${JSON.stringify(config)}; export const phoneHref = () => null; export const phoneMention = () => null;`,
+    "@/lib/utils": `export const cn = (...c) => c.filter(Boolean).join(" ");`,
+    wouter: `import { createElement } from "react"; export const useLocation = () => ["/", () => {}]; export const Link = ({ children, href, ...p }) => createElement("a", { href, ...p }, children);`,
+    "lucide-react": `import { createElement } from "react"; const I = (n) => () => createElement("svg", { "data-icone": n }); export const Menu = I("menu"), Phone = I("phone"), X = I("x"), FileText = I("filetext");`,
+  };
+  const sortie = await esbuild.build({
+    stdin: { contents: `import { createElement } from "react"; import { renderToStaticMarkup } from "react-dom/server"; import { ${nomExport} } from ${JSON.stringify(path.join(src, composant))}; globalThis.__html = renderToStaticMarkup(createElement(${nomExport}));`, loader: "tsx", resolveDir: tmp },
+    bundle: true, write: false, format: "cjs", platform: "node", jsx: "automatic", nodePaths: [path.join(tmp, "node_modules")], logLevel: "silent",
+    plugins: [{ name: "doublures", setup(b) {
+      b.onResolve({ filter: /^(@\/|wouter$|lucide-react$)/ }, (a) => (a.path === "@/data/navigation" ? { path: path.join(src, "data/navigation.ts") } : a.path in DOUBLURES ? { path: a.path, namespace: "doublure" } : undefined));
+      b.onLoad({ filter: /.*/, namespace: "doublure" }, (a) => ({ contents: DOUBLURES[a.path], loader: "tsx", resolveDir: tmp }));
+    } }],
+  });
+  const f = path.join(tmp, `rendu-${Math.random().toString(36).slice(2)}.cjs`);
+  fs.writeFileSync(f, sortie.outputFiles[0].text);
+  delete globalThis.__html;
+  require(f);
+  return globalThis.__html;
+}
+const socleActuel = extraire("ACTUEL");
+const socleAncien = extraire(refAncienne);
+const internes = (html) => [...html.matchAll(/<a\b[^>]*?\bhref="(\/[^"]*)"/g)].map((m) => m[1]).filter((h) => h !== "/");
+for (const langue of ["fr", "de"]) {
+  const config = { name: "Site", phone: "", ...(langue === "de" ? { langue: "de", chemins: { services: "/leistungen", villes: "/staedte", contact: "/kontakt" } } : {}) };
+  const contact = langue === "de" ? "/kontakt/" : "/contact/";
+  for (const [composant, nom] of [["components/layout/Header.tsx", "Header"], ["components/layout/StickyMobileCTA.tsx", "StickyMobileCTA"]]) {
+    const liens = internes(await rendre(socleActuel, composant, nom, config));
+    constat(liens.length > 0 && liens.every((h) => h.endsWith("/")) && liens.includes(contact), `${nom} ${langue} : ${liens.length} lien(s) interne(s), tous avec « / » (${[...new Set(liens)].join(" ")})`);
+    const vieux = internes(await rendre(socleAncien, composant, nom, config));
+    constat(vieux.some((h) => !h.endsWith("/")), `contre-epreuve ${refAncienne} : ${nom} ${langue} : liens sans « / » (${[...new Set(vieux)].join(" ")})`);
+    const g = gardeLiens(actuelle, langue, await rendre(socleActuel, composant, nom, config));
+    constat(!g.sortie.includes(`liens:${LIENS}`), `garde des liens sur le rendu ${nom} ${langue} de la v1.6.5 : aucun defaut`);
+  }
+}
+/* 6. (Frederic, 11.11, par CORRECTIFS BATIMENT) « kostenlose Offerte » dans un bouton ou un libelle du socle : rouge. */
+const { devisGratuits } = await import(`file://${actuelle}`);
+const { devisGratuits: devisGratuitsAncien } = await import(`file://${ancienne}`);
+for (const [texte, rouge, nouveau] of [
+  ["<Button>Kostenlose Offerte anfordern</Button>", true, true],
+  ['aria-label="Jetzt kostenlose Offerten vergleichen"', true, true],
+  ["devis: \"Kostenloser Offerte\"", true, true],
+  ["<Check /> Recevoir mon devis gratuit", true, false],
+  ["devis: \"Kostenloses Angebot anfragen\"", true, false],
+  ["devis: \"Demande gratuite\"", false, false],
+  ["devis: \"Kostenlose Anfrage\"", false, false],
+  ["devis: \"Offerte anfragen\"", false, false],
+]) {
+  constat((devisGratuits(texte).length > 0) === rouge, `garde du socle : « ${texte} » : ${rouge ? "rouge" : "vert"}`);
+  if (nouveau) constat(devisGratuitsAncien(texte).length === 0, `contre-epreuve ${refAncienne} : « ${texte} » passait`);
+}
+const fichiersSocle = JSON.parse(fs.readFileSync(path.join(racine, "socle/batiment/MANIFESTE.json"), "utf8")).fichiers;
+const restes = fichiersSocle.flatMap((e) => devisGratuits(fs.readFileSync(path.join(racine, "socle/batiment", e.source), "utf8")).map((g) => `${e.source}:${g.ligne}`));
+constat(restes.length === 0, `aucun fichier du socle ne promet un devis gratuit ni une offre gratuite${restes.length ? ` (${restes.join(", ")})` : ""}`);
+
+const hero = fs.readFileSync(path.join(socleActuel, "socle/batiment/src/components/HeroForm.tsx"), "utf8");
+constat(hero.includes('<Link href="/politique-confidentialite/"') && !/href="\/[^"]*[^/"]"/.test(hero), "HeroForm : lien de confidentialite avec « / », aucun lien interne sans « / »");
 
 fs.rmSync(tmp, { recursive: true, force: true });
 if (echecs > 0) {
