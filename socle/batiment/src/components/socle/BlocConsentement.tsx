@@ -99,7 +99,7 @@ export function BlocConsentement({
           required
           checked={consent}
           onChange={(e) => {
-            /* v1.6.5 (Frederic, 11.11) : l'instant ou la case est cochee, lu par submitLead (consentement_at). */
+            /* v1.6.5 (Frederic, 11.11) : l'instant ou la case est cochee, relu a l'envoi du lead (champ consentement_at). */
             (globalThis as { __socleConsentementAt?: string | null }).__socleConsentementAt = e.target.checked ? new Date().toISOString() : null;
             onConsent(e.target.checked);
           }}
