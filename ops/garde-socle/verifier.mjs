@@ -1267,6 +1267,15 @@ export function mesureEnvoiLead(api) {
     d.push("ne fait pas UN seul nouvel essai, sur reseau coupe ou 502, 503, 504");
   }
   if ((corps.match(/JSON\.stringify\(\s*charge\s*\)/g) ?? []).length !== 1) d.push("ne renvoie pas la meme charge (meme event_id) au nouvel essai");
+  /*
+   * v1.6.5 (SERVEURS · B, point 12, 11.11) : form_type reste dans le corps. Sans lui, le relais
+   * prend « source » comme type de formulaire, et « formulaire » n'y est pas permis. Les sites
+   * passent tous par construireCharge (mesure d'effet), qui doit l'ecrire, et submitLead ne
+   * doit pas l'oter.
+   */
+  const iCc = api.indexOf("export function construireCharge");
+  const cc = iCc < 0 ? "" : api.slice(iCc, api.indexOf("\n}\n", iCc) + 2);
+  if (!/\bform_type:\s*opts\.formType\b/.test(cc) || /form_type:\s*undefined|delete\s+[\w.]*form_type/.test(corps)) d.push("n'envoie pas form_type (le relais lirait source comme type de formulaire)");
   return d;
 }
 

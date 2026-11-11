@@ -376,6 +376,8 @@ for (const [libelle, muter, attendu] of [
   ["lead_submit avant la reponse", (s) => s.replace("  let response = await envoyer();", "  signalerLeadSubmit(eventId);\n  let response = await envoyer();"), "n'envoie pas lead_submit APRES la reponse"],
   ["lead_submit ecrit dans submitLead", (s) => s.replace("  return resultat;", '  (globalThis as any).umami?.track("lead_submit");\n  return resultat;'), "ailleurs que dans signalerLeadSubmit"],
   ["succes sur un simple 2xx", (s) => s.replace("response.ok && estSucces(corps)", "response.ok"), "EXPLICITE"],
+  ["sans form_type dans construireCharge", (s) => s.replace("    form_type: opts.formType,\n", ""), "n'envoie pas form_type"],
+  ["form_type ote par submitLead", (s) => s.replace('    source: "formulaire",\n    event_id', '    source: "formulaire",\n    form_type: undefined,\n    event_id'), "n'envoie pas form_type"],
   ["nouvel essai aussi sur 500", (s) => s.replace("export const ESSAI_STATUTS = [502, 503, 504];", "export const ESSAI_STATUTS = [500, 502, 503, 504];"), "502, 503 et 504"],
   ["nouvel essai sans attente", (s) => s.replace("export const ESSAI_ATTENTE_MS = 2000;", "export const ESSAI_ATTENTE_MS = 0;"), "2 secondes"],
   ["deux nouveaux essais", (s) => s.replace("    response = await envoyer();\n", "    response = await envoyer();\n    response = await envoyer();\n"), "UN seul nouvel essai"],
