@@ -158,14 +158,15 @@ fs.writeFileSync(
 console.log("  pose scripts/socle-manifeste.json");
 
 console.log(`\n${poses} fichiers poses sur ${path.basename(site)}.`);
-console.log("\nIl reste sept gestes a la main, sur des fichiers que le socle ne possede pas :");
+console.log("\nIl reste huit gestes a la main, sur des fichiers que le socle ne possede pas :");
 console.log("  1. ajouter phoneMention a src/data/config.ts ;");
 console.log("  2. monter BlocConsentement dans les formulaires du site ;");
 console.log("  3. remplacer l'ecriture de la 404 par rendre404 dans scripts/prerender-content.mjs ;");
 console.log("  4. ajouter `node ./scripts/garde-socle.mjs` en tete du script build ;");
 console.log("  5. ajouter `node ./scripts/garde-socle.mjs --pages dist/public` en fin du script build ;");
 console.log("  6. (v1.6.5) ajouter `node ./scripts/socle-liens.mjs dist/public` juste apres le prerendu, avant la garde des pages ;");
-console.log("  7. (v1.6.5) retirer tout envoi de lead_submit du code du site (page de remerciement, dataLayer, constantes) : il part de submitLead, apres la reponse du serveur.");
+console.log("  7. (v1.6.5) retirer tout envoi de lead_submit du code du site (page de remerciement, dataLayer, constantes) : il part de submitLead, apres la reponse du serveur ;");
+console.log("  8. (v1.6.6) ecrire dans SITE_CONFIG de src/data/config.ts, sous domainBare, `slashFinal: true,` (canonical et sitemap avec « / » final) ou `slashFinal: false,` (sans) : voir docs/SOCLE-BATIMENT.md, « Reglage slashFinal ».");
 console.log("\nPuis : node scripts/garde-socle.mjs depuis le site.");
 
 if (refuses.length > 0) {

@@ -55,6 +55,8 @@ const SITE = SITE_CONFIG as typeof SITE_CONFIG & {
   langue?: "fr" | "de";
   chemins?: Partial<Record<CleChemin, string>>;
   ligne?: boolean;
+  /** v1.6.6 : forme des adresses du site (voir lienCanonique). */
+  slashFinal?: boolean;
 };
 
 /*
@@ -86,23 +88,29 @@ const CHEMINS: Record<CleChemin, string> = Object.assign(
 export const CHEMIN_CONTACT = CHEMINS.contact;
 
 /*
- * v1.6.5 (Frederic, 11.11) : un lien interne pointe DIRECTEMENT vers l'adresse
- * canonique, avec « / » final, celle des sitemaps et des balises canonical.
- * L'adresse sans « / » repond par une redirection 301 : chaque clic et chaque
- * passage de Google la traversait. Les chemins du site (`CHEMINS`, `NAV`,
- * `CHEMIN_CONTACT`) restent ecrits sans « / » : ce sont aussi ses routes. Le
- * « / » s'ajoute au rendu du lien. Restent tels quels : la racine, un lien
- * externe ou `//`, un fichier (.xml, .pdf, image...), et l'ancre ou les
- * parametres, gardes apres le « / ».
+ * v1.6.6 (Frederic, 11.11) : un lien interne pointe DIRECTEMENT vers l'adresse
+ * canonique du site, celle de son canonical et de son sitemap. Sa FORME est un
+ * REGLAGE ECRIT dans la configuration du site, `slashFinal` de `SITE_CONFIG` :
+ *   - `slashFinal: true`  : adresses avec « / » final (« /services/ ») ;
+ *   - `slashFinal: false` : adresses sans « / » final (« /services »).
+ * Le socle ne decide rien : il lit le reglage. Reglage absent (la garde l'exige
+ * a la source et sur les pages), le lien reste tel qu'il est ecrit. Les chemins
+ * du site (`CHEMINS`, `NAV`, `CHEMIN_CONTACT`) restent ses routes, ecrites sans
+ * « / ». Restent tels quels : la racine, un lien externe ou `//`, un fichier
+ * (.xml, .pdf, image...) ; l'ancre et les parametres sont gardes apres le chemin.
+ * (v1.6.5 posait le « / » partout : regression sur les 9 sites sans « / ».)
  */
 const FICHIER = /\.[a-z0-9]{2,5}$/i;
 export function lienCanonique(href: string): string {
+  const slash = SITE.slashFinal;
+  if (slash !== true && slash !== false) return href;
   if (!href.startsWith("/") || href.startsWith("//")) return href;
   const i = href.search(/[?#]/);
   const chemin = i < 0 ? href : href.slice(0, i);
   const suite = i < 0 ? "" : href.slice(i);
-  if (chemin.endsWith("/") || FICHIER.test(chemin)) return href;
-  return `${chemin}/${suite}`;
+  if (chemin === "/" || FICHIER.test(chemin)) return href;
+  if (slash) return chemin.endsWith("/") ? href : `${chemin}/${suite}`;
+  return chemin.endsWith("/") ? `${chemin.replace(/\/+$/, "") || "/"}${suite}` : href;
 }
 
 /*
@@ -112,11 +120,11 @@ export function lienCanonique(href: string): string {
  * sans rechargement les remet dans la page affichee, que Google lit aussi.
  * Ce module, charge par l'en-tete sur chaque page, tient la regle au centre :
  *   1. l'historique du navigateur (`pushState`, `replaceState`) recoit
- *      l'adresse avec « / » final : l'adresse affichee, le rechargement, le
- *      partage et la page vue d'Umami la portent. Son enveloppe reste la
+ *      l'adresse canonique (forme du reglage `slashFinal`) : l'adresse affichee,
+ *      le rechargement, le partage et la page vue d'Umami la portent. Son enveloppe reste la
  *      premiere appelee meme si Umami pose la sienne apres (accesseur) ;
  *   2. un observateur du document remet le « / » a tout lien interne qui
- *      apparait ou change apres l'hydratation (React ne relit pas un attribut
+ *      apparait ou change apres l'hydratation (v1.6.6 : la forme du reglage) (React ne relit pas un attribut
  *      dont la valeur ne change pas dans son code).
  * Meme regle que `lienCanonique` : racine, fichiers, liens externes,
  * mailto:, tel:, ancres seules intacts. Rien ne tourne au prerendu (pas de

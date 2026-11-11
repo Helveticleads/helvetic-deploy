@@ -184,6 +184,11 @@ function mesuresEffet(site, defauts) {
         );
       }
     }
+    /* v1.6.6 (Frederic, 11.11) : la forme des adresses est un reglage ECRIT du site. */
+    const reglage = config.match(/\bslashFinal\s*:\s*([^,}\s]+)/);
+    if (!reglage || !/^(true|false)$/.test(reglage[1])) {
+      defauts.push(`effet:src/data/config.ts ${reglage ? `ecrit slashFinal: ${reglage[1]}, qui n'est ni true ni false` : "ne declare pas slashFinal"} : ecrire dans SITE_CONFIG \`slashFinal: true,\` si le canonical et le sitemap du site sont avec « / » final, ou \`slashFinal: false,\` s'ils sont sans`);
+    }
     if (!/\bphoneMention\b/.test(config)) {
       defauts.push(
         "effet:src/data/config.ts ne declare pas phoneMention, la mention posee a cote du numero",
@@ -623,8 +628,11 @@ const TELEFON = new RegExp(TOURNURES_TELEFON.map(([, m]) => `(?:${m})`).join("|"
  * 0XX XXX XX XX, +41 XX XXX XX XX, 0041..., 0800 XXX XXX, espaces facultatifs.
  * Le champ du client (« Telefon * », « Telefonnummer » comme libelle) ne porte
  * pas de numero : il passe.
+ * v1.6.6 (trou signale le 11.11) : un point ou une virgule de ponctuation apres
+ * le numero (« 044 555 66 77. ») ne le cache plus ; seul un chiffre apres eux
+ * (« 044 555 66 77.5 ») fait que ce n'est pas un numero.
  */
-export const NUMERO_SUISSE = /(?<![\d.,:/+-])(?:(?:\+|00)41\s?|0)(?:\d{2}\s?\d{3}\s?\d{2}\s?\d{2}|8\d{2}\s?\d{3}\s?\d{3})(?![\d.,])/gu;
+export const NUMERO_SUISSE = /(?<![\d.,:/+-])(?:(?:\+|00)41\s?|0)(?:\d{2}\s?\d{3}\s?\d{2}\s?\d{2}|8\d{2}\s?\d{3}\s?\d{3})(?!\d|[.,]\d)/gu;
 /*
  * Exception nommee (Frederic, 05.11) : le champ du formulaire qui demande le
  * numero DU CLIENT pour le rappeler. C'est son numero, pas le notre : le
@@ -1056,21 +1064,38 @@ function pagesHtml(dir) {
 }
 
 /*
- * v1.6.5 (Frederic, 11.11) : un lien interne d'une page servie pointe vers
- * l'adresse canonique, avec « / » final. L'adresse sans « / » repond par une
- * redirection 301 (mesure en ligne du 11.11, 5 sites, un seul saut). Interne :
- * un chemin « /... » ou une adresse du domaine du site (`domain:` de la
- * configuration). Restent hors regle : la racine, un fichier (.xml, .pdf,
- * image...), une ancre ou des parametres seuls, un lien externe, mailto: et tel:.
+ * v1.6.6 (Frederic, 11.11) : dans les pages produites, chaque lien interne, la
+ * balise canonical et chaque <loc> du sitemap ont la FORME du reglage du site,
+ * `slashFinal` de src/data/config.ts (true : avec « / » final ; false : sans).
+ * Un lien de l'autre forme passe par une redirection 301. Interne : un chemin
+ * « /... » ou une adresse du domaine du site (`domainBare:`, sinon `domain:`).
+ * Hors regle : la racine, un fichier (.xml, .pdf, .svg, image, favicon...),
+ * une ancre ou des parametres seuls, un lien externe, mailto: et tel:.
  */
 const FICHIER_LIEN = /\.[a-z0-9]{2,5}$/i;
-export function lienSansSlash(href, domaine) {
+export function cheminInterne(href, domaine) {
   let h = href.trim().replace(/&amp;/g, "&");
   if (domaine) h = h.replace(new RegExp(`^https?://(?:www\\.)?${domaine.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(?=[/?#]|$)`, "i"), "");
+  if (/^https?:\/\/[^/]+$/i.test(h)) return null;
   if (!h.startsWith("/") || h.startsWith("//")) return null;
   const chemin = h.split(/[?#]/)[0];
-  if (chemin === "/" || chemin.endsWith("/") || FICHIER_LIEN.test(chemin)) return null;
+  if (chemin === "/" || FICHIER_LIEN.test(chemin)) return null;
   return chemin;
+}
+/** Le chemin interne s'il n'a PAS la forme du reglage ; sinon null. */
+export function horsForme(href, domaine, slash) {
+  const c = cheminInterne(href, domaine);
+  if (!c) return null;
+  return c.endsWith("/") === slash ? null : c;
+}
+/** v1.6.5, garde pour compatibilite : un lien interne sans « / » (reglage slashFinal: true). */
+export function lienSansSlash(href, domaine) {
+  return horsForme(href, domaine, true);
+}
+export function reglageSlashFinal(site) {
+  const f = path.join(site, "src/data/config.ts");
+  const m = (fs.existsSync(f) ? lire(f) : "").match(/\bslashFinal\s*:\s*(true|false)\b/);
+  return m ? m[1] === "true" : null;
 }
 
 export function mesureTelephonePages(site, dossierPages, defauts) {
@@ -1092,6 +1117,17 @@ export function mesureTelephonePages(site, dossierPages, defauts) {
   /* `domainBare: "..."` sur les 29 sites (11.11), sinon `domain: "..."`. */
   const domaine = (texteConfig.match(/\bdomainBare:\s*["']([^"']+)["']/) ?? texteConfig.match(/\bdomain:\s*["']([^"']+)["']/) ?? [])[1]?.trim().toLowerCase().replace(/^https?:\/\//, "").replace(/^www\./, "").replace(/\/+$/, "") ?? null;
 
+  const slash = reglageSlashFinal(site);
+  if (slash === null) {
+    noter("reglage slashFinal absent de src/data/config.ts : ecrire dans SITE_CONFIG `slashFinal: true,` (canonical et sitemap avec « / » final) ou `slashFinal: false,` (sans)", "src/data/config.ts");
+  } else {
+    /* v1.6.6 : les <loc> des sitemaps produits ont la forme du reglage. */
+    for (const f of fs.readdirSync(dossierPages).filter((n) => /^sitemap.*\.xml$/i.test(n))) {
+      const locs = [...lire(path.join(dossierPages, f)).matchAll(/<loc>\s*([^<\s]+)\s*<\/loc>/gi)].map((m) => horsForme(m[1], domaine, slash)).filter(Boolean);
+      if (locs.length) noter(`adresse du sitemap qui n'a pas la forme du reglage slashFinal: ${slash}`, f, `${locs.length} adresse(s) : ${[...new Set(locs)].slice(0, 3).join(" ")}${locs.length > 3 ? " ..." : ""}`);
+    }
+  }
+
   for (const p of pages) {
     const page = path.relative(dossierPages, p);
     const html = lire(p);
@@ -1103,11 +1139,18 @@ export function mesureTelephonePages(site, dossierPages, defauts) {
       if (!LIEN_CONFIDENTIALITE.test(bloc)) noter("case de consentement sans lien vers la politique de confidentialite", page);
     }
 
-    /* v1.6.5 : les liens internes, vers l'adresse canonique avec « / » final. */
-    const sansSlash = [...html.matchAll(/<a\b[^>]*?\bhref="([^"]*)"/gi)].map((m) => lienSansSlash(m[1], domaine)).filter(Boolean);
-    if (sansSlash.length) {
-      const distincts = [...new Set(sansSlash)];
-      noter("lien interne vers une adresse qui redirige (sans « / » final)", page, `${sansSlash.length} lien(s), ${distincts.length} adresse(s) : ${distincts.slice(0, 3).join(" ")}${distincts.length > 3 ? " ..." : ""}`);
+    /* v1.6.5, v1.6.6 : les liens internes et le canonical, a la forme du reglage slashFinal. */
+    if (slash !== null) {
+      const ecarts = [...html.matchAll(/<a\b[^>]*?\bhref="([^"]*)"/gi)].map((m) => horsForme(m[1], domaine, slash)).filter(Boolean);
+      if (ecarts.length) {
+        const distincts = [...new Set(ecarts)];
+        noter(`lien interne vers une adresse qui redirige (${slash ? "sans" : "avec"} « / » final)`, page, `${ecarts.length} lien(s), ${distincts.length} adresse(s) : ${distincts.slice(0, 3).join(" ")}${distincts.length > 3 ? " ..." : ""}`);
+      }
+      for (const m of html.matchAll(/<link\b[^>]*\brel="canonical"[^>]*>/gi)) {
+        const href = (m[0].match(/\bhref="([^"]*)"/) ?? [])[1];
+        const c = href ? horsForme(href, domaine, slash) : null;
+        if (c) noter(`balise canonical qui n'a pas la forme du reglage slashFinal: ${slash}`, page, c);
+      }
     }
 
     /* d) une seule plage horaire, FR et DE : pied, page contact, JSON-LD ; v1.6.5 (trou 3) : corps des pages (<main>). */
@@ -1198,7 +1241,7 @@ export function mesureTelephonePages(site, dossierPages, defauts) {
 
   const tout = process.env.GARDE_SOCLE_TOUT === "1";
   for (const [cle, liste] of constats) {
-    defauts.push(`${cle.startsWith("case de consentement") ? "consentement" : cle.startsWith("lien interne") ? "liens" : "telephone"}:${cle} : ${liste.length} page(s)\n      ${liste.slice(0, tout ? liste.length : 8).join("\n      ")}${!tout && liste.length > 8 ? `\n      (+${liste.length - 8}, tout voir : GARDE_SOCLE_TOUT=1)` : ""}`);
+    defauts.push(`${cle.startsWith("case de consentement") ? "consentement" : cle.startsWith("lien interne") || cle.includes("slashFinal") ? "liens" : "telephone"}:${cle} : ${liste.length} page(s)\n      ${liste.slice(0, tout ? liste.length : 8).join("\n      ")}${!tout && liste.length > 8 ? `\n      (+${liste.length - 8}, tout voir : GARDE_SOCLE_TOUT=1)` : ""}`);
   }
   return pages.length;
 }

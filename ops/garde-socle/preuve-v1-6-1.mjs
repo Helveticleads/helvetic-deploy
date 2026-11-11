@@ -135,7 +135,7 @@ constat(!vieille.includes(`>${NUMERO}</a>`) && !vieille.includes(HEURES), `contr
 /* v1.6.5 (Frederic, 11.11) : un build conforme appelle aussi la passe des liens, apres le prerendu, avant la garde des pages. */
 const BUILD_BON = "node ./scripts/garde-socle.mjs && vite build && node ./scripts/prerender-content.mjs && node ./scripts/socle-liens.mjs dist/public && node ./scripts/garde-socle.mjs --pages dist/public";
 const PAQUET = (nom, build = BUILD_BON) => JSON.stringify({ name: `@workspace/${nom}`, scripts: { build } });
-const CONFIG = (champs) => `export const SITE_CONFIG = { name: "Site", ${champs} };`;
+const CONFIG = (champs) => `export const SITE_CONFIG = { name: "Site", slashFinal: true, ${champs} };`;
 
 function site(fichiers) {
   const d = path.join(tmp, `site-${Math.random().toString(36).slice(2)}`);

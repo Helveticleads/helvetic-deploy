@@ -108,7 +108,7 @@ for (const langue of ["fr", "de"]) {
 }
 
 /* 2. La garde des pages. */
-const CONFIG = { fr: 'export const SITE_CONFIG = { name: "Site", phone: "", phoneMention: "" };', de: 'export const SITE_CONFIG = { name: "Site", phone: "", phoneMention: "", langue: "de" };' };
+const CONFIG = { fr: 'export const SITE_CONFIG = { name: "Site", slashFinal: true, phone: "", phoneMention: "" };', de: 'export const SITE_CONFIG = { name: "Site", slashFinal: true, phone: "", phoneMention: "", langue: "de" };' };
 function garde(verifier, langue, bloc) {
   const d = path.join(tmp, `site-${Math.random().toString(36).slice(2)}`);
   const page = `<html><head><title>Site</title></head><body><header>Kopf</header><main><form>${bloc}<button>OK</button></form></main><footer>Fuss</footer></body></html>`;

@@ -93,6 +93,7 @@ reste une exception ; la regle ne vaut que pour les 29 sites du batiment.
 | Les liens internes pointent vers l'adresse CANONIQUE, avec « / » final (v1.6.5, Frederic 11.11) : le socle ajoute le « / » au rendu (`lienCanonique()` de `navigation.ts`, en-tete, menu, barre du bas, HeroForm) ; les chemins `CHEMINS`, `NAV`, `CHEMIN_CONTACT` restent ecrits sans « / », ce sont aussi les routes. La racine, les fichiers, les liens externes restent tels quels ; l'ancre et les parametres sont gardes apres le « / ». Les liens que le site ecrit lui-meme passent par la PASSE CENTRALE `scripts/socle-liens.mjs` (fichier du socle), appelee dans le build juste apres le prerendu et avant la garde des pages (sixieme geste de `poser.mjs`) : elle ne reecrit que la valeur `href` des `<a>` internes (chemin « /... » ou domaine `domainBare` du site). La garde de la source refuse un build qui ne l'appelle pas, ou pas a cette place. Une page servie qui porte un lien interne sans « / » (adresse qui redirige) est rouge. Aussi rouge dans un fichier du socle : « kostenlos… » suivi de « Offerte » | garde des pages, defaut `liens:` ; garde socle, defaut `gratuite:` ; `preuve-v1-6-5.mjs` |
 | L'envoi du lead (v1.6.5, Frederic 11.11 ; `CONTRAT-FORMULAIRE-BATIMENT-04-11.md`) : `submitLead` de `src/lib/api.ts` ajoute `event_id` (UUID v4, aussi en-tete `Idempotency-Key`), `origine_demande` (URL absolue sans parametres ni ancre), `consentement_at` (instant de la case, releve par `BlocConsentement`) et `source: "formulaire"`. « merci » seulement sur un succes explicite (2xx ET `ok`, `success`, `lead_id` ou `deja_recu`) ; sinon une erreur claire dans la langue du site, la saisie gardee. Sur 502, 503, 504 ou reseau coupe : UN nouvel essai apres 2 secondes, meme charge et meme `event_id` ; jamais sur 400, 429 ni 500 ; si le second echoue, le message donne le numero que le site affiche (sa configuration ; aucun sur un site DE ni avec `ligne: false`). `lead_submit` part APRES la reponse, seulement sur un succes, avec le meme `event_id`, jamais pour un doublon ; plus jamais de la page de remerciement. Aucune cle ni secret dans le socle | garde socle, empreinte de `api.ts` ; mesures d'effet `mesureEnvoiLead`, `lead_submit` hors de submitLead ; `preuve-v1-6-5.mjs` |
 | Les liens restent canoniques APRES l'execution du JavaScript (v1.6.5, Frederic 11.11) : `installerLiensCanoniques()` de `src/data/navigation.ts`, installe au chargement de l'en-tete, enveloppe `history.pushState` et `replaceState` (l'adresse affichee, le rechargement, le partage et la page vue d'Umami portent le « / » ; l'enveloppe reste la premiere appelee meme si Umami pose la sienne apres) et observe le document pour remettre le « / » a tout lien interne ajoute ou change apres l'hydratation. Meme regle que `lienCanonique`. Le site ne reecrit pas l'historique et ne desactive pas le mecanisme | garde socle, empreinte de `navigation.ts` ; mesures d'effet ; `preuve-v1-6-5.mjs` ; mesure en navigateur sur les sites construits |
+| La FORME des adresses est un reglage ECRIT du site (v1.6.6, Frederic 11.11) : `slashFinal: true` (canonical et sitemap avec « / » final) ou `slashFinal: false` (sans), dans `SITE_CONFIG` de `src/data/config.ts`. `lienCanonique()`, l'historique et la passe `socle-liens.mjs` le lisent et ne decident rien ; aucune adresse ne change pour Google, ce sont les liens qui s'alignent. Reglage absent ou mal ecrit : rouge a la source, arret de la passe, rouge aux pages. Sur les pages produites, chaque lien interne, la balise canonical et chaque `<loc>` du sitemap ont la forme du reglage ; fichiers hors regle | garde socle (effet), garde des pages `liens:` ; `preuve-v1-6-6.mjs` |
 | Une VRAIE case de consentement, `required`, dont la valeur part dans `consent` | garde socle, empreinte de `BlocConsentement.tsx` |
 | `consent: true` n'est JAMAIS ecrit en dur | garde socle, mesure d'effet |
 | Un piege anti-robot rendu, hors ecran et hors tabulation, dont la valeur part dans `website` | garde socle, empreinte et mesure d'effet |
@@ -184,7 +185,7 @@ Un socle modifie sans recopie rend les sites ROUGES au prochain build : c'est
 voulu. La garde dit quel fichier et quelle ligne.
 
 **La cle `version` de `MANIFESTE.json` augmente de 1 a chaque version publiee.**
-Decision de Frederic du 02.11.2026. Elle vaut 2 avec la v1.4.0, 3 avec la v1.5.0, 4 avec la v1.6.0, 5 avec la v1.6.1, 6 avec la v1.6.2, 7 avec la v1.6.3, 8 avec la v1.6.4, 9 avec la v1.6.5. Elle s'ecrit dans
+Decision de Frederic du 02.11.2026. Elle vaut 2 avec la v1.4.0, 3 avec la v1.5.0, 4 avec la v1.6.0, 5 avec la v1.6.1, 6 avec la v1.6.2, 7 avec la v1.6.3, 8 avec la v1.6.4, 9 avec la v1.6.5, 10 avec la v1.6.6. Elle s'ecrit dans
 `ops/garde-socle/manifeste.mjs`, avant le tag. Un site non concerne par une
 version garde la valeur de sa derniere recopie : la garde ne lit pas cette cle.
 
@@ -267,3 +268,46 @@ rien de ce qui est ecrit ici n'atteint un seul site.
   valeurs par defaut, et son rendu ne change pas. Les libelles du menu restent
   dans la zone libre. Bouton allemand : « Offerte anfragen », « Kostenloses
   Angebot anfragen », deux libelles deja servis par le parc.
+
+## Reglage slashFinal (v1.6.6) : la ligne a ecrire dans chaque site
+
+Decision de Frederic du 11.11 : chaque site garde la forme de son canonical et de son sitemap ; ce sont les liens qui s'alignent. La forme s'ecrit dans le site, une fois, et la garde la controle.
+
+Ou : `src/data/config.ts`, dans l'objet `SITE_CONFIG`, juste sous la ligne `domainBare: "...",`, avec la meme indentation. La valeur s'ecrit en dur (`true` ou `false`, jamais calculee).
+
+Mesure en ligne du 11.11 (canonical de /services ou /leistungen, `<loc>` du sitemap, redirection) : 20 sites avec « / », 9 sans.
+
+| Site | Paquet | Ligne a ajouter |
+| --- | --- | --- |
+| DE-helvetic-dachdecker.ch | `artifacts/helvetique-toiture` | `slashFinal: true,` |
+| DE-helvetic-daemmung.ch | `artifacts/helvetic-daemmung` | `slashFinal: true,` |
+| DE-helvetic-elektriker.ch | `artifacts/helvetic-elektriker` | `slashFinal: true,` |
+| DE-helvetic-glaserei.ch | `artifacts/helvetic-glaserei` | `slashFinal: true,` |
+| DE-helvetic-heizung.ch | `artifacts/helvetic-heizung` | `slashFinal: true,` |
+| DE-helvetic-kaminfeger.ch | `artifacts/helvetic-kaminfeger` | `slashFinal: true,` |
+| DE-helvetic-malerei.ch | `artifacts/helvetic-malerei` | `slashFinal: true,` |
+| DE-helvetic-rohrreinigung.ch | `artifacts/helvetique-assainissement` | `slashFinal: true,` |
+| DE-helvetic-sanitaer.ch | `artifacts/helvetisch-sanitaer` | `slashFinal: true,` |
+| DE-helvetic-schluesseldienst.ch | `artifacts/helvetic-schluesseldienst` | `slashFinal: true,` |
+| FR-helvetique-assainissement.ch | `artifacts/helvetique-assainissement` | `slashFinal: true,` |
+| FR-helvetique-carrelage.ch | `artifacts/helvetique-carrelage` | `slashFinal: false,` |
+| FR-helvetique-chauffage.ch | `artifacts/helvetique-chauffage` | `slashFinal: true,` |
+| FR-helvetique-electricite.ch | `artifacts/helvetique-electricite` | `slashFinal: true,` |
+| FR-helvetique-ferronnerie.ch | `artifacts/helvetique-ferronnerie` | `slashFinal: false,` |
+| FR-helvetique-isolation.ch | `artifacts/helvetique-isolation` | `slashFinal: true,` |
+| FR-helvetique-maconnerie.ch | `artifacts/helvetique-maconnerie` | `slashFinal: false,` |
+| FR-helvetique-menuiserie.ch | `artifacts/helvetique-menuiserie` | `slashFinal: false,` |
+| FR-helvetique-panneau-solaire.ch | `artifacts/helvetique-panneau-solaire` | `slashFinal: false,` |
+| FR-helvetique-peinture.ch | `artifacts/helvetique-peinture` | `slashFinal: true,` |
+| FR-helvetique-plaquiste.ch | `artifacts/helvetique-plaquiste` | `slashFinal: false,` |
+| FR-helvetique-plomberie.ch | `artifacts/helvetique-plomberie` | `slashFinal: true,` |
+| FR-helvetique-ramonage.ch | `artifacts/helvetique-ramonage` | `slashFinal: true,` |
+| FR-helvetique-renovation-exterieure.ch | `artifacts/helvetique-renovation-exterieure` | `slashFinal: false,` |
+| FR-helvetique-renovation-interieure.ch | `artifacts/helvetique-renovation-interieure` | `slashFinal: false,` |
+| FR-helvetique-serrurerie.ch | `artifacts/helvetique-serrurerie` | `slashFinal: true,` |
+| FR-helvetique-terrassement.ch | `artifacts/helvetique-terrassement` | `slashFinal: false,` |
+| FR-helvetique-toiture.ch | `artifacts/helvetique-toiture` | `slashFinal: true,` |
+| FR-helvetique-vitrerie.ch | `artifacts/helvetique-vitrerie` | `slashFinal: true,` |
+
+Preuve par site, apres la recopie : `GARDE_SOCLE_OK` (la garde de la source refuse un site sans la ligne) ; au build, `SOCLE_LIENS_OK ... slashFinal: <valeur>)` puis `GARDE_SOCLE_PAGES_OK`. Une mauvaise valeur rend la garde des pages rouge sur les liens, le canonical et le sitemap.
+
