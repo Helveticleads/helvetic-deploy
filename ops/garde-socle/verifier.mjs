@@ -977,7 +977,13 @@ export function plagesHoraires(texte, langue, zone = null) {
     const jours = !j1 || (d1 === 1 && d2 === 5);
     const conforme = jours && debut === 600 && fin === 1140;
     /* v1.6.5 : dans le corps, une borne au-dela de 24 h est une duree (« 24 à 48 h »), pas une heure. */
-    const duree = zone === "corps" && (Number(h1) > 24 || Number(h2) > 24);
+    /*
+     * v1.6.5 (faux positif de la contre-epreuve locale du 11.11, DE-helvetic-kaminfeger.ch, pastille
+     * de duree « 1–2 h » d'une prestation) : dans le corps, sans jour ni minutes, une plage dont la
+     * borne haute vaut 4 h au plus, sans « Uhr », est une duree ; une plage d'ouverture ne finit pas entre minuit et 4 h.
+     */
+    const courte = !j1 && !uhr && !h1m && !h1c && !h1p && !h2m && !h2c && !h2p && Number(h2) <= 4 && Number(h1) < Number(h2);
+    const duree = zone === "corps" && (Number(h1) > 24 || Number(h2) > 24 || courte);
     const exception = conforme || duree ? null : exceptionPlage(texte, m.index, m.index + m[0].length, langue, zone);
     if (duree) { out.push({ texte: m[0].trim(), conforme: true, exception: "une duree, pas une heure du jour" }); continue; }
     out.push({ texte: m[0].trim(), conforme: conforme || Boolean(exception), exception: exception?.sens ?? null });
