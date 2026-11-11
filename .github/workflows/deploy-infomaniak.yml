@@ -234,6 +234,46 @@ jobs:
           fi
           exit "$rc"
 
+      # IndexNow (decision de Frederic du 11.11), pour TOUS les appelants inscrits
+      # dans ops/indexnow/cles.json ; un domaine absent n'a rien. Ces etapes ne
+      # peuvent pas rendre un deploiement rouge (continue-on-error, exit 0) et ne
+      # tournent jamais pour une PR. Preuve : ops/indexnow/preuve-indexnow.mjs
+      - name: IndexNow script
+        if: ${{ !startsWith(github.event_name, 'pull_request') }}
+        continue-on-error: true
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ job.workflow_repository }}
+          ref: ${{ job.workflow_sha }}
+          path: _indexnow
+          sparse-checkout: |
+            ops/indexnow
+          sparse-checkout-cone-mode: false
+
+      - name: IndexNow fichier cle et sitemap servi
+        if: ${{ !startsWith(github.event_name, 'pull_request') }}
+        continue-on-error: true
+        timeout-minutes: 2
+        run: |
+          set +e
+          D="$RUNNER_TEMP/indexnow"
+          mkdir -p "$D/avant"
+          CLE=$(node _indexnow/ops/indexnow/indexnow.mjs cle "$DOMAIN")
+          if [ -z "$CLE" ]; then
+            echo "INDEXNOW_SKIP domaine non inscrit : $DOMAIN"
+            exit 0
+          fi
+          printf '%s' "$CLE" > "$SRC/$CLE.txt" && echo "INDEXNOW_CLE_POSEE $CLE.txt"
+          SSH=(ssh -i ~/.ssh/id_ed25519 -o BatchMode=yes -o IdentitiesOnly=yes "deploy@$HOST")
+          if ! "${SSH[@]}" "cat '/var/www/$DOMAIN/current/sitemap.xml'" > "$D/avant/sitemap.xml" 2>/dev/null; then
+            rm -f "$D/avant/sitemap.xml"
+          fi
+          if "${SSH[@]}" "test -s '/var/www/$DOMAIN/current/$CLE.txt'"; then
+            touch "$D/avant/cle-presente"
+          fi
+          echo "INDEXNOW_AVANT sitemap=$(test -s "$D/avant/sitemap.xml" && echo oui || echo non) cle_servie=$(test -f "$D/avant/cle-presente" && echo oui || echo non)"
+          exit 0
+
       - name: Deploiement atomique gaté
         env:
           LOCK_OWNER: ${{ github.repository }}@${{ github.run_id }}
@@ -616,6 +656,24 @@ jobs:
           echo "GATE_OK post_assets"
           echo "GATE_OK render"
           echo "GATE_OK deploy_complete"
+
+      # Apres un deploiement reussi seulement ; jamais pour une PR ni une preuve de sabotage.
+      # Un echec est un avertissement journalise, jamais un deploiement rouge.
+      - name: IndexNow signaler les adresses changees
+        if: ${{ success() && !startsWith(github.event_name, 'pull_request') && inputs.preuve_sabotage_retire == '' }}
+        continue-on-error: true
+        timeout-minutes: 2
+        env:
+          INDEXNOW_DEPLOIEMENT_REEL: "1"
+        run: |
+          set +e
+          S="_indexnow/ops/indexnow/indexnow.mjs"
+          if [ ! -f "$S" ]; then
+            echo "::warning title=IndexNow::INDEXNOW_AVERTISSEMENT script absent"
+            exit 0
+          fi
+          node "$S" envoyer --domaine "$DOMAIN" --nouveau "$SRC/sitemap.xml" --avant "$RUNNER_TEMP/indexnow/avant"
+          exit 0
 
 
       - name: Notifier echec deploy (issue persistante)
