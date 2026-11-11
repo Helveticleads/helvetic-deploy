@@ -1095,7 +1095,14 @@ export function mesureTelephonePages(site, dossierPages, defauts) {
       const j = html.indexOf("<footer", i);
       zones.push(["contact", i < 0 ? html : html.slice(i, j < 0 ? html.length : j)]);
     } else {
-      zones.push(["corps", bloc(html, "<main", "</main>")]);
+      /*
+       * v1.6.5 (faux positif de la contre-epreuve locale du 11.11, DE-helvetic-glaserei.ch,
+       * en-tete « Einsatz | Tag (07–20 Uhr) | Nacht / Wochenende | Hinweis ») : dans le corps,
+       * une rangee de tableau se lit comme UNE phrase, ses cellules reunies ; les exceptions
+       * nommees (intervention, tarif, majoration) s'y appliquent comme a une phrase.
+       */
+      const corpsHtml = bloc(html, "<main", "</main>");
+      zones.push(["corps", corpsHtml && corpsHtml.replace(/<\/t[hd]>\s*<t[hd]\b[^>]*>/gi, " · ")]);
     }
     for (const [zone, contenu] of zones) {
       if (!contenu) continue;
