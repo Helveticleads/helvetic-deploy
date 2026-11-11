@@ -992,11 +992,13 @@ export function plagesHoraires(texte, langue, zone = null) {
      * sans jour, sans minutes, sans « Uhr », une plage est une duree si sa borne haute vaut 4 h au
      * plus (une ouverture ne finit pas entre minuit et 4 h), ou si elle est SEULE dans son bloc avec
      * 6 h d'ecart au plus. « Ouvert de 2 h à 6 h. » ou « 8–18 h » seul restent rouges.
+     * Les deux regles se lisent en minutes (borne haute 4 h, ecart 6 h).
      */
     const ouvreBloc = texte.lastIndexOf("¦", m.index) + 1;
     const fermeBloc = (() => { const j = texte.indexOf("¦", m.index + m[0].length); return j < 0 ? texte.length : j; })();
     const seule = texte.slice(ouvreBloc, fermeBloc).replace(m[0], "").replace(/[\s·•,;:()]/g, "") === "";
-    const courte = !j1 && !uhr && !h1m && !h1c && !h1p && !h2m && !h2c && !h2p && Number(h1) < Number(h2) && (Number(h2) <= 4 || (seule && Number(h2) - Number(h1) <= 6));
+    /* minutes en « h 30 » admises (FR-helvetique-chauffage.ch, « 1 h à 1 h 30 » d'un tableau de durees) ; jamais « 08:00 » ni « 7.30 ». */
+    const courte = !j1 && !uhr && !h1c && !h1p && !h2c && !h2p && debut < fin && (fin <= 240 || (seule && !h1m && !h2m && fin - debut <= 360));
     const duree = zone === "corps" && (Number(h1) > 24 || Number(h2) > 24 || courte);
     const exception = conforme || duree ? null : exceptionPlage(texte, m.index, m.index + m[0].length, langue, zone);
     if (duree) { out.push({ texte: m[0].trim(), conforme: true, exception: "une duree, pas une heure du jour" }); continue; }
