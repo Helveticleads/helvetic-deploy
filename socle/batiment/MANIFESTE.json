@@ -1,17 +1,17 @@
 {
   "socle": "batiment",
-  "version": 8,
+  "version": 9,
   "note": "Empreintes du contenu normalise (zones libres retirees). Refaire avec: node ops/garde-socle/manifeste.mjs",
   "fichiers": [
     {
       "source": "src/components/layout/Header.tsx",
       "chemin": "src/components/layout/Header.tsx",
-      "empreinte": "21053a9693d86c11d6c2e4a31f7b7fa0ef053188841b024813d7ca46adbe7bd1"
+      "empreinte": "8ebeedd3ee509da06e6f4061308d790389d4c970b4b5151d49bd3f44b5c765f4"
     },
     {
       "source": "src/components/layout/StickyMobileCTA.tsx",
       "chemin": "src/components/layout/StickyMobileCTA.tsx",
-      "empreinte": "d2d480221a5e820358de4b4e098eae5c1c6a01226d0e86a91d1616c6f033936a"
+      "empreinte": "c7f19b8bda2d948d26a5148b2bff7d1ca521fad961fe779392dd72895ba5f942"
     },
     {
       "source": "src/components/socle/CanalWhatsapp.tsx",
@@ -21,7 +21,7 @@
     {
       "source": "src/components/socle/BlocConsentement.tsx",
       "chemin": "src/components/socle/BlocConsentement.tsx",
-      "empreinte": "eb4ec31c88d50bf766cab29de72be269fd961fb7cbd1aacc7e0cb9a1c8c3109c"
+      "empreinte": "a4ea4e6c223509aabf1cf8a7928a4a2497050ac3ba68f94c7dd5f72c78ff9dd8"
     },
     {
       "source": "src/components/socle/reserve-widget.css",
@@ -37,22 +37,27 @@
       "source": "src/components/HeroForm.tsx",
       "chemin": "src/components/HeroForm.tsx",
       "optionnel": true,
-      "empreinte": "371c3ac7b75aa05d9bfb6b40d5705733bf3aee72e974b4072213a399db5f107e"
+      "empreinte": "eb743c067d4689ee3fc1945d0bce3b2b67ec0fb8db5e44932777a545f1028e17"
     },
     {
       "source": "src/data/navigation.ts",
       "chemin": "src/data/navigation.ts",
-      "empreinte": "0e15e377dcf894f481542fcba8d820622975b73ad40759e9e7fb9a6979220267"
+      "empreinte": "db6d4664cd530eee7ebf5a03466bdea6a0cb060e21d5767cd7129baa6a485a51"
     },
     {
       "source": "src/lib/api.ts",
       "chemin": "src/lib/api.ts",
-      "empreinte": "0d0de7e6e03724f39f3687e9df0fa2f84c566c8f6faea34409297496b3c3b5ad"
+      "empreinte": "c94a87d7aa6763dbc1a68b3cc00cbfad8668fa66db384ca71a48092dd48f4510"
     },
     {
       "source": "scripts/socle-404.mjs",
       "chemin": "scripts/socle-404.mjs",
       "empreinte": "9b8571a17a9c0fed2899b048a38b8f1451e0b6d4cd60e43cd1e7951c2defccff"
+    },
+    {
+      "source": "scripts/socle-liens.mjs",
+      "chemin": "scripts/socle-liens.mjs",
+      "empreinte": "60bdd01bc53e7414297c4c1560aa1e4290f6fbd52627062e0b065648f577f9b5"
     },
     {
       "source": "deploy/csp-batiment.conf",
@@ -62,7 +67,7 @@
     {
       "source": "../../ops/garde-socle/verifier.mjs",
       "chemin": "scripts/garde-socle.mjs",
-      "empreinte": "f8c027c6aa39ee6320f91f6c8322cfe89ed7c0bc5c71975e6410199995b6d207"
+      "empreinte": "6d3b89be363619f96006bfda7c80d4966aabb8f1a00ed837a823d11279682545"
     }
   ]
 }

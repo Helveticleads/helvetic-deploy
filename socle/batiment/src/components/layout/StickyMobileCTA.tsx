@@ -18,7 +18,7 @@ import { Link } from "wouter";
 import { FileText, Phone } from "lucide-react";
 import { CanalWhatsapp } from "@/components/socle/CanalWhatsapp";
 import { SITE_CONFIG, phoneMention } from "@/data/config";
-import { CHEMIN_CONTACT, TEXTES, telephone } from "@/data/navigation";
+import { CHEMIN_CONTACT, TEXTES, lienCanonique, telephone } from "@/data/navigation";
 
 export function StickyMobileCTA() {
   const tel = telephone();
@@ -48,7 +48,7 @@ export function StickyMobileCTA() {
           className="inline-flex h-[2.9rem] w-[2.9rem] shrink-0 items-center justify-center rounded-xl bg-[#25D366] text-white"
         />
         <Link
-          href={CHEMIN_CONTACT}
+          href={lienCanonique(CHEMIN_CONTACT)}
           className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl bg-accent py-3 text-sm font-semibold text-accent-foreground"
         >
           <FileText className="h-4 w-4" aria-hidden="true" /> {TEXTES.devis}

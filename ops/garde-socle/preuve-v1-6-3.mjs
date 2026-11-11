@@ -55,8 +55,9 @@ const actuel = extraire("ACTUEL");
 const ancien = extraire(refAncienne);
 
 const LIENS = {
-  fr: '<a href="/politique-de-confidentialite">politique de confidentialité</a>',
-  de: '<a href="/datenschutz">Datenschutzerklärung</a>',
+  /* v1.6.5 (11.11) : les liens internes portent le « / » final, comme les sites apres la recopie. */
+  fr: '<a href="/politique-de-confidentialite/">politique de confidentialité</a>',
+  de: '<a href="/datenschutz/">Datenschutzerklärung</a>',
 };
 
 /** Rend BlocConsentement d'une version, avec le lien de confidentialite du site. */
@@ -67,7 +68,7 @@ async function rendre(version, langue) {
       contents: `import { createElement } from "react";
         import { renderToStaticMarkup } from "react-dom/server";
         import { BlocConsentement } from ${JSON.stringify(fichier)};
-        const lien = createElement("a", { href: ${JSON.stringify(langue === "fr" ? "/politique-de-confidentialite" : "/datenschutz")} }, ${JSON.stringify(langue === "fr" ? "politique de confidentialité" : "Datenschutzerklärung")});
+        const lien = createElement("a", { href: ${JSON.stringify(langue === "fr" ? "/politique-de-confidentialite/" : "/datenschutz/")} }, ${JSON.stringify(langue === "fr" ? "politique de confidentialité" : "Datenschutzerklärung")});
         globalThis.__html = renderToStaticMarkup(createElement(BlocConsentement, { consent: false, onConsent() {}, piege: "", onPiege() {}, langue: ${JSON.stringify(langue)}, lienConfidentialite: lien }));`,
       loader: "tsx",
       resolveDir: tmp,

@@ -263,7 +263,7 @@ export function HeroForm({
               onPiege={(v) => setContact({ ...contact, piege: v })}
               idSuffixe="-hero"
               lienConfidentialite={
-                <Link href="/politique-confidentialite" className="link-underline text-secondary">
+                <Link href="/politique-confidentialite/" className="link-underline text-secondary">
                   politique de confidentialité
                 </Link>
               }
