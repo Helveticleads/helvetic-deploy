@@ -48,8 +48,8 @@ function site(langue, pages) {
   const fichiers = {
     "package.json": JSON.stringify({ name: `@workspace/helvetic-preuve-${langue}`, scripts: { build: BUILD } }),
     "src/data/config.ts": langue === "de"
-      ? 'export const SITE_CONFIG = { name: "Site", phone: "", phoneMention: "", langue: "de" };'
-      : `export const SITE_CONFIG = { name: "Site", phone: "${NUM}", phoneMention: "${H}" };`,
+      ? 'export const SITE_CONFIG = { name: "Site", slashFinal: true, phone: "", phoneMention: "", langue: "de" };'
+      : `export const SITE_CONFIG = { name: "Site", slashFinal: true, phone: "${NUM}", phoneMention: "${H}" };`,
     ...Object.fromEntries(Object.entries(pages).map(([p, h]) => [`dist/public/${p}`, h])),
   };
   for (const [f, c] of Object.entries(fichiers)) {
@@ -161,8 +161,8 @@ for (const [libelle, langue, pages, vert] of TENUS) {
 /* 5. Les liens internes avec « / » final (Frederic, 11.11). */
 const LIENS = "lien interne vers une adresse qui redirige (sans « / » final)";
 const CONFIG_DOMAINE = (langue) => langue === "de"
-  ? 'export const SITE_CONFIG = { name: "Site", phone: "", phoneMention: "", langue: "de", domain: "helvetic-exemple.ch" };'
-  : `export const SITE_CONFIG = { name: "Site", phone: "${NUM}", phoneMention: "${H}", domain: "helvetique-exemple.ch" };`;
+  ? 'export const SITE_CONFIG = { name: "Site", slashFinal: true, phone: "", phoneMention: "", langue: "de", domain: "helvetic-exemple.ch" };'
+  : `export const SITE_CONFIG = { name: "Site", slashFinal: true, phone: "${NUM}", phoneMention: "${H}", domain: "helvetique-exemple.ch" };`;
 function gardeLiens(verifier, langue, main) {
   const pages = langue === "de" ? siteDe(main) : siteFr(main);
   const d = site(langue, pages);
@@ -217,7 +217,7 @@ async function rendre(version, composant, nomExport, config) {
     "@/components/socle/CanalWhatsapp": `export const CanalWhatsapp = () => null;`,
     "@/components/socle/reserve-widget.css": ``,
     "@/routes": `export const NotFound = () => null; export const pagesForRoute = (h) => h === "/inconnu" ? [NotFound] : [() => null];`,
-    "@/data/config": `export const SITE_CONFIG = ${JSON.stringify(config)}; export const phoneHref = () => null; export const phoneMention = () => null;`,
+    "@/data/config": `export const SITE_CONFIG = ${JSON.stringify({ slashFinal: true, ...config })}; export const phoneHref = () => null; export const phoneMention = () => null;`,
     "@/lib/utils": `export const cn = (...c) => c.filter(Boolean).join(" ");`,
     wouter: `import { createElement } from "react"; export const useLocation = () => ["/", () => {}]; export const Link = ({ children, href, ...p }) => createElement("a", { href, ...p }, children);`,
     "lucide-react": `import { createElement } from "react"; const I = (n) => () => createElement("svg", { "data-icone": n }); export const Menu = I("menu"), Phone = I("phone"), X = I("x"), FileText = I("filetext");`,
@@ -421,7 +421,7 @@ async function chargerNavigation(version) {
       b.onResolve({ filter: /^@\/(routes|data\/config)$/ }, (x) => ({ path: x.path, namespace: "doublure" }));
       b.onLoad({ filter: /.*/, namespace: "doublure" }, (x) => ({ loader: "js", contents: x.path === "@/routes"
         ? "export const NotFound = () => null; export const pagesForRoute = () => [() => null];"
-        : 'export const SITE_CONFIG = { name: "Site", phone: "" }; export const phoneHref = () => null;' }));
+        : 'export const SITE_CONFIG = { name: "Site", slashFinal: true, phone: "" }; export const phoneHref = () => null;' }));
     } }],
   });
   const f = path.join(tmp, `nav-${Math.random().toString(36).slice(2)}.mjs`);
@@ -540,7 +540,7 @@ constat(passe.passerPage(passee, "helvetic-exemple.ch").corriges === 0, "passe :
   const avantPasse = spawnSync("node", [actuelle, d, "--pages", "dist/public"], { encoding: "utf8" });
   constat(avantPasse.status === 1 && `${avantPasse.stdout}${avantPasse.stderr}`.includes(`liens:${LIENS} : 2 page(s)`), "sans la passe : garde des pages rouge (liens:, 2 pages)");
   const r = spawnSync("node", [path.join(racine, "socle/batiment/scripts/socle-liens.mjs"), "dist/public"], { cwd: d, encoding: "utf8" });
-  constat(r.status === 0 && /SOCLE_LIENS_OK 3 lien\(s\) interne\(s\) mis a l'adresse canonique sur 2 page\(s\) \(2 page\(s\) lues, domaine helvetic-exemple\.ch\)/.test(r.stdout), `passe sur le dossier construit : ${r.stdout.trim()}`);
+  constat(r.status === 0 && /SOCLE_LIENS_OK 3 lien\(s\) interne\(s\) mis a l'adresse canonique sur 2 page\(s\) \(2 page\(s\) lues, domaine helvetic-exemple\.ch, slashFinal: true\)/.test(r.stdout), `passe sur le dossier construit : ${r.stdout.trim()}`);
   const apresPasse = spawnSync("node", [actuelle, d, "--pages", "dist/public"], { encoding: "utf8" });
   constat(apresPasse.status === 0, "apres la passe : garde des pages verte");
 }
@@ -565,7 +565,7 @@ constat(gardeSource(ancienne, `${PRERENDU} && ${PAGES}`).length === 0, `contre-e
 /* Le domaine lu comme sur les 29 sites : `domain: brand.domain` (non litteral), `domainBare: "..."`. */
 {
   const d = site("fr", { "index.html": FR('<a href="https://helvetique-exemple.ch/villes">V</a>') });
-  fs.writeFileSync(path.join(d, "src/data/config.ts"), `export const SITE_CONFIG = { name: "Site", phone: "${NUM}", phoneMention: "${H}", domain: brand.domain, domainBare: "helvetique-exemple.ch" };`);
+  fs.writeFileSync(path.join(d, "src/data/config.ts"), `export const SITE_CONFIG = { name: "Site", slashFinal: true, phone: "${NUM}", phoneMention: "${H}", domain: brand.domain, domainBare: "helvetique-exemple.ch" };`);
   const g = spawnSync("node", [actuelle, d, "--pages", "dist/public"], { encoding: "utf8" });
   constat(`${g.stdout}${g.stderr}`.includes(`liens:${LIENS}`), "domainBare : href absolu du domaine sans « / » : garde rouge");
   const r = spawnSync("node", [path.join(racine, "socle/batiment/scripts/socle-liens.mjs"), "dist/public"], { cwd: d, encoding: "utf8" });

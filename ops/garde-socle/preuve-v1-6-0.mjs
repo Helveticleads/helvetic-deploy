@@ -77,7 +77,7 @@ async function rendre(version, composant, nomExport, config) {
     "@/components/socle/CanalWhatsapp": `export const CanalWhatsapp = () => null;`,
     "@/components/socle/reserve-widget.css": ``,
     "@/routes": `export const NotFound = () => null; export const pagesForRoute = (h) => h === "/inconnu" ? [NotFound] : [() => null];`,
-    "@/data/config": `export const SITE_CONFIG = ${JSON.stringify(config)};
+    "@/data/config": `export const SITE_CONFIG = ${JSON.stringify({ slashFinal: true, ...config })};
       export const phoneHref = () => SITE_CONFIG.phone ? "tel:+41" + SITE_CONFIG.phone.replace(/\\D/g, "").slice(1) : null;
       export const phoneMention = () => null;`,
     "@/lib/utils": `export const cn = (...c) => c.filter(Boolean).join(" ");`,
@@ -225,7 +225,7 @@ function gardeSite(version, fichiers) {
   const r = spawnSync("node", ["scripts/garde-socle.mjs"], { cwd: site, encoding: "utf8" });
   return `${r.stdout}${r.stderr}`.split("\n").filter((l) => l.includes("pied/contact") || l.includes("drapeau ligne"));
 }
-const CONFIG_PARC = 'export const SITE_CONFIG = { name: "Site", phone: "", ligne: false };';
+const CONFIG_PARC = 'export const SITE_CONFIG = { name: "Site", slashFinal: true, phone: "", ligne: false };';
 const PIED_FAUTIF = `import { Phone, Mail } from "lucide-react";
 import { phoneHref } from "@/data/config";
 export function Footer() {
@@ -264,14 +264,14 @@ constat(vu.some((l) => /ligne 6 : icone Phone sur un lien qui n'appelle pas/.tes
 constat(vu.some((l) => /ligne 8 : horaire d'appel/.test(l)), "garde, parc : horaire d'appel non etiquete, refuse");
 const propre = gardeSite(actuel, { "src/data/config.ts": CONFIG_PARC, "src/components/layout/Footer.tsx": PIED_PROPRE, "src/pages/Contact.tsx": "export default () => null;" });
 constat(propre.length === 0, `garde, parc : telephone(), icone sur le lien tel, horaire etiquete : accepte (${propre.length} defaut)`);
-const batiment = gardeSite(actuel, { ...fautif, "src/data/config.ts": 'export const SITE_CONFIG = { name: "Site", phone: "" };' });
+const batiment = gardeSite(actuel, { ...fautif, "src/data/config.ts": 'export const SITE_CONFIG = { name: "Site", slashFinal: true, phone: "" };' });
 constat(batiment.length === 0, "garde, batiment (sans drapeau ligne) : mesure eteinte, rien ne change");
 const vieuxVu = gardeSite(ancien, fautif);
 constat(vieuxVu.length === 0, `contre-epreuve ${refAncienne} : l'ancienne garde laisse passer les trois defauts du pied et du contact`);
 
 /* 7. Drapeau obligatoire au parc, creneaux de rappel d'un champ. */
 const PAQUET = (nom) => JSON.stringify({ name: `@workspace/${nom}` });
-const CONFIG_SANS = 'export const SITE_CONFIG = { name: "Site", phone: "" };';
+const CONFIG_SANS = 'export const SITE_CONFIG = { name: "Site", slashFinal: true, phone: "" };';
 const parcSans = gardeSite(actuel, { "package.json": PAQUET("helvetique-jardin"), "src/data/config.ts": CONFIG_SANS });
 constat(parcSans.some((l) => /site du parc \(@workspace\/helvetique-jardin\) sans drapeau ligne/.test(l)), "garde : paquet du parc sans drapeau ligne, refuse");
 const parcAvec = gardeSite(actuel, { "package.json": PAQUET("helvetique-jardin"), "src/data/config.ts": CONFIG_PARC });
@@ -305,7 +305,7 @@ const parDomaine = [...DOMAINES_PARC].map((d) => d.replace(/\.ch$/, ""));
 const seuls = [...parPaquet.filter((s) => !parDomaine.includes(s)), ...parDomaine.filter((s) => !parPaquet.includes(s))];
 constat(PAQUETS_PARC.size === 16 && DOMAINES_PARC.size === 16 && seuls.length === 0,
   `listes du parc : ${PAQUETS_PARC.size} paquets, ${DOMAINES_PARC.size} domaines, ${seuls.length} site dans une seule liste`);
-const CONFIG_DOMAINE = (d, ligne) => `export const SITE_CONFIG = { name: "Site", domain: "${d}", phone: ""${ligne ? ", ligne: false" : ""} };`;
+const CONFIG_DOMAINE = (d, ligne) => `export const SITE_CONFIG = { name: "Site", slashFinal: true, domain: "${d}", phone: ""${ligne ? ", ligne: false" : ""} };`;
 const renomme = { "package.json": PAQUET("site-renomme"), "src/data/config.ts": CONFIG_DOMAINE("helvetique-jardin.ch", false) };
 constat(gardeSite(actuel, renomme).some((l) => /site du parc \(helvetique-jardin\.ch\) sans drapeau ligne/.test(l)),
   "garde : paquet renomme, domaine du parc, sans drapeau : refuse");

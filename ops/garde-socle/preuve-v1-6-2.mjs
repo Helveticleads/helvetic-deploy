@@ -44,7 +44,7 @@ const ancien = path.join(tmp, "verifier-ancien.mjs");
 fs.writeFileSync(ancien, execFileSync("git", ["-C", racine, "show", `${refAncienne}:ops/garde-socle/verifier.mjs`]));
 
 const BUILD = "vite build && node ./scripts/prerender-content.mjs && node ./scripts/garde-socle.mjs --pages dist/public";
-const CONFIG = (champs) => `export const SITE_CONFIG = { name: "Site", ${champs} };`;
+const CONFIG = (champs) => `export const SITE_CONFIG = { name: "Site", slashFinal: true, ${champs} };`;
 const NUMERO = "021 000 00 00";
 const HEURES = "Lun-ven 10 h - 19 h";
 
