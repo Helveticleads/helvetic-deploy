@@ -716,6 +716,18 @@ export function mesureTelephoneSource(site, defauts) {
   } else if (iPrerendu >= 0 && iPages < iPrerendu) {
     defauts.push("effet:la garde des pages construites tourne avant le prerendu : la placer apres");
   }
+  /*
+   * v1.6.5 (Frederic, 11.11) : la passe des liens internes tourne APRES le
+   * prerendu et AVANT la garde des pages, qui prouve son resultat. Un site qui
+   * ne l'appelle pas est rouge ici, et rouge aussi a la garde des pages
+   * (`liens:`) : l'oubli ne passe pas.
+   */
+  const iLiens = etapes.findIndex((s) => /(?:^|[\s/])socle-liens\.mjs(?:\s|$)/.test(s));
+  if (iLiens < 0) {
+    defauts.push("effet:le build du site ne lance pas la passe des liens internes : ajouter `node ./scripts/socle-liens.mjs dist/public` juste apres le prerendu, avant la garde des pages");
+  } else if ((iPrerendu >= 0 && iLiens < iPrerendu) || (iPages >= 0 && iLiens > iPages)) {
+    defauts.push("effet:la passe des liens internes doit tourner apres le prerendu et avant la garde des pages");
+  }
 }
 
 /* Les elements de bloc : leur fin coupe une phrase (« rufen Sie ... an », v1.6.2). */
@@ -1028,7 +1040,9 @@ export function mesureTelephonePages(site, dossierPages, defauts) {
   const numeroNormal = regle.numero.replace(/\s+/g, " ");
   const pages = pagesHtml(dossierPages);
   const fConfig = path.join(site, "src/data/config.ts");
-  const domaine = ((fs.existsSync(fConfig) ? lire(fConfig) : "").match(/\bdomain:\s*["']([^"']+)["']/) ?? [])[1]?.trim().toLowerCase().replace(/^https?:\/\//, "").replace(/^www\./, "").replace(/\/+$/, "") ?? null;
+  const texteConfig = fs.existsSync(fConfig) ? lire(fConfig) : "";
+  /* `domainBare: "..."` sur les 29 sites (11.11), sinon `domain: "..."`. */
+  const domaine = (texteConfig.match(/\bdomainBare:\s*["']([^"']+)["']/) ?? texteConfig.match(/\bdomain:\s*["']([^"']+)["']/) ?? [])[1]?.trim().toLowerCase().replace(/^https?:\/\//, "").replace(/^www\./, "").replace(/\/+$/, "") ?? null;
 
   for (const p of pages) {
     const page = path.relative(dossierPages, p);

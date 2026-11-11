@@ -55,6 +55,11 @@
       "empreinte": "9b8571a17a9c0fed2899b048a38b8f1451e0b6d4cd60e43cd1e7951c2defccff"
     },
     {
+      "source": "scripts/socle-liens.mjs",
+      "chemin": "scripts/socle-liens.mjs",
+      "empreinte": "60bdd01bc53e7414297c4c1560aa1e4290f6fbd52627062e0b065648f577f9b5"
+    },
+    {
       "source": "deploy/csp-batiment.conf",
       "chemin": "deploy/csp-batiment.conf",
       "empreinte": "2f520bce914ce9a0251744e56bdcfff66f7b8dc9e836d8ebcbbb5ee1578ebd6c"
@@ -62,7 +67,7 @@
     {
       "source": "../../ops/garde-socle/verifier.mjs",
       "chemin": "scripts/garde-socle.mjs",
-      "empreinte": "aaf22fa70a960b54dd6547faf993f9b0b0410ae44df62204504f4ffa6d1b8a0a"
+      "empreinte": "f3b5a666c08c6c4db9b0199c5ee0566071852ac60bdefd21233fe0d18bba4352"
     }
   ]
 }

@@ -132,7 +132,8 @@ const vieille = await rendreBarre(ancien, { name: "Site", phone: NUMERO, phoneMe
 constat(!vieille.includes(`>${NUMERO}</a>`) && !vieille.includes(HEURES), `contre-epreuve ${refAncienne} : la barre du bas n'ecrivait ni le numero ni les horaires`);
 
 /* 2. La garde des pages construites. */
-const BUILD_BON = "node ./scripts/garde-socle.mjs && vite build && node ./scripts/prerender-content.mjs && node ./scripts/garde-socle.mjs --pages dist/public";
+/* v1.6.5 (Frederic, 11.11) : un build conforme appelle aussi la passe des liens, apres le prerendu, avant la garde des pages. */
+const BUILD_BON = "node ./scripts/garde-socle.mjs && vite build && node ./scripts/prerender-content.mjs && node ./scripts/socle-liens.mjs dist/public && node ./scripts/garde-socle.mjs --pages dist/public";
 const PAQUET = (nom, build = BUILD_BON) => JSON.stringify({ name: `@workspace/${nom}`, scripts: { build } });
 const CONFIG = (champs) => `export const SITE_CONFIG = { name: "Site", ${champs} };`;
 

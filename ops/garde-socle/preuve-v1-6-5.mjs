@@ -238,6 +238,81 @@ for (const langue of ["fr", "de"]) {
     constat(!g.sortie.includes(`liens:${LIENS}`), `garde des liens sur le rendu ${nom} ${langue} de la v1.6.5 : aucun defaut`);
   }
 }
+/* 7. La passe centrale des liens, apres le prerendu (Frederic, 11.11). */
+const passe = await import(`file://${path.join(racine, "socle/batiment/scripts/socle-liens.mjs")}`);
+for (const [domaine, avant, apres, libelle] of [
+  ["helvetic-exemple.ch", "/staedte", "/staedte/", "DE chemin"],
+  ["helvetic-exemple.ch", "/leistungen/rohrreinigung#ablauf", "/leistungen/rohrreinigung/#ablauf", "DE ancre gardee apres le « / »"],
+  ["helvetique-exemple.ch", "/services/depannage?ville=sion&amp;x=1", "/services/depannage/?ville=sion&amp;x=1", "FR parametres gardes"],
+  ["helvetique-exemple.ch", "/villes/zürich", "/villes/zürich/", "FR chemin avec accent"],
+  ["helvetic-exemple.ch", "https://helvetic-exemple.ch/kontakt", "https://helvetic-exemple.ch/kontakt/", "href absolu du domaine"],
+  ["helvetic-exemple.ch", "https://www.helvetic-exemple.ch/kontakt?a=1", "https://www.helvetic-exemple.ch/kontakt/?a=1", "href absolu du domaine, www"],
+  ["helvetic-exemple.ch", "/", "/", "racine"],
+  ["helvetic-exemple.ch", "https://helvetic-exemple.ch", "https://helvetic-exemple.ch", "racine absolue"],
+  ["helvetic-exemple.ch", "/staedte/", "/staedte/", "deja avec « / »"],
+  ["helvetic-exemple.ch", "/sitemap.xml", "/sitemap.xml", "fichier .xml"],
+  ["helvetic-exemple.ch", "/merkblatt.pdf", "/merkblatt.pdf", "fichier .pdf"],
+  ["helvetic-exemple.ch", "/robots.txt", "/robots.txt", "fichier .txt"],
+  ["helvetique-exemple.ch", "/images/photo.webp", "/images/photo.webp", "image"],
+  ["helvetic-exemple.ch", "#formular", "#formular", "ancre seule"],
+  ["helvetic-exemple.ch", "?seite=2", "?seite=2", "parametres seuls"],
+  ["helvetic-exemple.ch", "https://www.admin.ch/gov", "https://www.admin.ch/gov", "lien externe"],
+  ["helvetic-exemple.ch", "https://helvetic-rohrreinigung.ch/staedte", "https://helvetic-rohrreinigung.ch/staedte", "autre domaine du parc, non touche"],
+  ["helvetic-exemple.ch", "https://helvetic-exemple.ch.evil.test/x", "https://helvetic-exemple.ch.evil.test/x", "domaine qui commence pareil, non touche"],
+  ["helvetic-exemple.ch", "//cdn.exemple.ch/x", "//cdn.exemple.ch/x", "lien //"],
+  ["helvetic-exemple.ch", "mailto:info@exemple.ch", "mailto:info@exemple.ch", "mailto:"],
+  ["helvetic-exemple.ch", "tel:+41000000000", "tel:+41000000000", "tel:"],
+]) {
+  const obtenu = passe.hrefCanonique(avant, domaine);
+  constat(obtenu === apres, `passe : ${libelle} : « ${avant} » donne « ${obtenu} »`);
+}
+const PAGE = '<html><head><link rel="canonical" href="https://helvetic-exemple.ch/staedte/"><link rel="stylesheet" href="/assets/a.css"></head><body><main><p>Siehe /staedte und /kontakt.</p><a class="x" href="/staedte" data-a="1">Städte</a><a href="https://helvetic-rohrreinigung.ch/staedte">Andere</a><a\nhref="/kontakt#f">K</a><area href="/x"></main></body></html>';
+const { html: passee, corriges } = passe.passerPage(PAGE, "helvetic-exemple.ch");
+const ATTENDUE = PAGE.replace('<a class="x" href="/staedte"', '<a class="x" href="/staedte/"').replace('href="/kontakt#f"', 'href="/kontakt/#f"');
+constat(corriges === 2 && passee === ATTENDUE, `passe : seules les valeurs href des <a> internes changent (${corriges} corriges), canonical, feuille de style, texte, autre domaine et <area> intacts, octet pour octet`);
+constat(passe.passerPage(passee, "helvetic-exemple.ch").corriges === 0, "passe : deux passages = un seul (idempotente)");
+/* La passe sur un dossier construit, puis la garde des pages : verte ; sans la passe : rouge. */
+{
+  const d = site("de", { "index.html": DE('<p><a href="/staedte">S</a> <a href="https://helvetic-exemple.ch/kontakt?x=1">K</a></p>'), "staedte/index.html": DE('<a href="/leistungen/rohrreinigung">R</a>') });
+  fs.writeFileSync(path.join(d, "src/data/config.ts"), CONFIG_DOMAINE("de"));
+  const avantPasse = spawnSync("node", [actuelle, d, "--pages", "dist/public"], { encoding: "utf8" });
+  constat(avantPasse.status === 1 && `${avantPasse.stdout}${avantPasse.stderr}`.includes(`liens:${LIENS} : 2 page(s)`), "sans la passe : garde des pages rouge (liens:, 2 pages)");
+  const r = spawnSync("node", [path.join(racine, "socle/batiment/scripts/socle-liens.mjs"), "dist/public"], { cwd: d, encoding: "utf8" });
+  constat(r.status === 0 && /SOCLE_LIENS_OK 3 lien\(s\) interne\(s\) mis a l'adresse canonique sur 2 page\(s\) \(2 page\(s\) lues, domaine helvetic-exemple\.ch\)/.test(r.stdout), `passe sur le dossier construit : ${r.stdout.trim()}`);
+  const apresPasse = spawnSync("node", [actuelle, d, "--pages", "dist/public"], { encoding: "utf8" });
+  constat(apresPasse.status === 0, "apres la passe : garde des pages verte");
+}
+/* La garde de la source : le build doit appeler la passe, apres le prerendu, avant la garde des pages. */
+function gardeSource(verifier, build) {
+  const d = fs.mkdtempSync(path.join(tmp, "src-"));
+  fs.mkdirSync(path.join(d, "src/data"), { recursive: true });
+  fs.mkdirSync(path.join(d, "scripts"), { recursive: true });
+  fs.writeFileSync(path.join(d, "package.json"), JSON.stringify({ name: "@workspace/helvetic-preuve-de", scripts: { build } }));
+  fs.writeFileSync(path.join(d, "src/data/config.ts"), CONFIG_DOMAINE("de"));
+  fs.writeFileSync(path.join(d, "scripts/socle-manifeste.json"), JSON.stringify({ fichiers: [] }));
+  const r = spawnSync("node", [verifier, d], { encoding: "utf8" });
+  return `${r.stdout}${r.stderr}`.split("\n").filter((l) => l.includes("passe des liens"));
+}
+const PRERENDU = "vite build && node ./scripts/prerender-content.mjs";
+const PAGES = "node ./scripts/garde-socle.mjs --pages dist/public";
+constat(gardeSource(actuelle, `${PRERENDU} && ${PAGES}`).some((l) => l.includes("ne lance pas la passe des liens")), "garde de la source : build sans la passe : rouge");
+constat(gardeSource(actuelle, `node ./scripts/socle-liens.mjs dist/public && ${PRERENDU} && ${PAGES}`).some((l) => l.includes("apres le prerendu et avant la garde des pages")), "garde de la source : passe avant le prerendu : rouge");
+constat(gardeSource(actuelle, `${PRERENDU} && ${PAGES} && node ./scripts/socle-liens.mjs dist/public`).some((l) => l.includes("apres le prerendu et avant la garde des pages")), "garde de la source : passe apres la garde des pages : rouge");
+constat(gardeSource(actuelle, `${PRERENDU} && node ./scripts/socle-liens.mjs dist/public && ${PAGES}`).length === 0, "garde de la source : passe a sa place : aucun defaut");
+constat(gardeSource(ancienne, `${PRERENDU} && ${PAGES}`).length === 0, `contre-epreuve ${refAncienne} : un build sans la passe passait`);
+/* Le domaine lu comme sur les 29 sites : `domain: brand.domain` (non litteral), `domainBare: "..."`. */
+{
+  const d = site("fr", { "index.html": FR('<a href="https://helvetique-exemple.ch/villes">V</a>') });
+  fs.writeFileSync(path.join(d, "src/data/config.ts"), `export const SITE_CONFIG = { name: "Site", phone: "${NUM}", phoneMention: "${H}", domain: brand.domain, domainBare: "helvetique-exemple.ch" };`);
+  const g = spawnSync("node", [actuelle, d, "--pages", "dist/public"], { encoding: "utf8" });
+  constat(`${g.stdout}${g.stderr}`.includes(`liens:${LIENS}`), "domainBare : href absolu du domaine sans « / » : garde rouge");
+  const r = spawnSync("node", [path.join(racine, "socle/batiment/scripts/socle-liens.mjs"), "dist/public"], { cwd: d, encoding: "utf8" });
+  const html = fs.readFileSync(path.join(d, "dist/public/index.html"), "utf8");
+  constat(r.stdout.includes("domaine helvetique-exemple.ch") && html.includes('href="https://helvetique-exemple.ch/villes/"'), "domainBare : la passe corrige le href absolu du domaine");
+}
+const man = JSON.parse(fs.readFileSync(path.join(racine, "socle/batiment/MANIFESTE.json"), "utf8"));
+constat(man.fichiers.some((e) => e.chemin === "scripts/socle-liens.mjs" && !e.optionnel), "manifeste : scripts/socle-liens.mjs, fichier du socle obligatoire");
+
 /* 6. (Frederic, 11.11, par CORRECTIFS BATIMENT) « kostenlose Offerte » dans un bouton ou un libelle du socle : rouge. */
 const { devisGratuits } = await import(`file://${actuelle}`);
 const { devisGratuits: devisGratuitsAncien } = await import(`file://${ancienne}`);

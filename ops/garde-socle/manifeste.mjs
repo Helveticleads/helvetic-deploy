@@ -39,6 +39,8 @@ const FICHIERS = [
   { source: "src/data/navigation.ts", chemin: "src/data/navigation.ts" },
   { source: "src/lib/api.ts", chemin: "src/lib/api.ts" },
   { source: "scripts/socle-404.mjs", chemin: "scripts/socle-404.mjs" },
+  /* v1.6.5 (Frederic, 11.11) : la passe des liens internes, apres le prerendu. */
+  { source: "scripts/socle-liens.mjs", chemin: "scripts/socle-liens.mjs" },
   { source: "deploy/csp-batiment.conf", chemin: "deploy/csp-batiment.conf" },
   { source: "../../ops/garde-socle/verifier.mjs", chemin: "scripts/garde-socle.mjs" },
 ];
