@@ -42,7 +42,7 @@
     {
       "source": "src/data/navigation.ts",
       "chemin": "src/data/navigation.ts",
-      "empreinte": "f7ef471ef147da2a07ea7f14f3f72b087707f50cd5c40c0b7b77830b1b59be46"
+      "empreinte": "db6d4664cd530eee7ebf5a03466bdea6a0cb060e21d5767cd7129baa6a485a51"
     },
     {
       "source": "src/lib/api.ts",
@@ -67,7 +67,7 @@
     {
       "source": "../../ops/garde-socle/verifier.mjs",
       "chemin": "scripts/garde-socle.mjs",
-      "empreinte": "7704481c1e8267d7c87eb850eef2230f8067f7fb0d9423c86cc653715eccda94"
+      "empreinte": "46d84075b2fa644e952b4695e39f35dbb8f008156ec39c30aadf636474e00b7e"
     }
   ]
 }

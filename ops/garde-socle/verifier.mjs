@@ -231,6 +231,21 @@ function mesuresEffet(site, defauts) {
    * apres la reponse du serveur. Un `lead_submit` ecrit ailleurs dans le code
    * du site (page de remerciement, dataLayer, constante...) est refuse.
    */
+  /*
+   * 3 ter. v1.6.5, point 7 (Frederic, 11.11) : la tenue des liens canoniques
+   * apres l'execution du JavaScript vit dans src/data/navigation.ts (empreinte)
+   * et s'installe a son chargement. Le site ne la contourne pas : il ne
+   * reecrit pas l'historique du navigateur et ne la desactive pas.
+   */
+  const fNavLiens = path.join(site, "src/data/navigation.ts");
+  if (fs.existsSync(fNavLiens) && !/^installerLiensCanoniques\(\);$/m.test(lire(fNavLiens))) {
+    defauts.push("effet:src/data/navigation.ts n'installe pas la tenue des liens canoniques (installerLiensCanoniques())");
+  }
+  const contournements = fichiersContournementLiens(site);
+  if (contournements.length > 0) {
+    defauts.push(`effet:le site contourne la tenue des liens canoniques (historique reecrit ou mecanisme desactive) : ${contournements.join(", ")}`);
+  }
+
   const horsSocle = fichiersLeadSubmit(site);
   if (horsSocle.length > 0) {
     defauts.push(`effet:lead_submit envoye hors de submitLead (page de remerciement ou autre) : ${horsSocle.join(", ")} ; il part desormais de src/lib/api.ts apres la reponse du serveur`);
@@ -1242,6 +1257,28 @@ export function fichiersLeadSubmit(site) {
     const p = path.join(site, f);
     if (fs.existsSync(p) && /["'`]lead_submit["'`]|data-umami-event=["']lead_submit/.test(lire(p))) out.push(f);
   }
+  return out;
+}
+
+/** Les fichiers du site, hors socle, qui reecrivent l'historique du navigateur ou desactivent la tenue des liens canoniques (commentaires retires). */
+export function fichiersContournementLiens(site) {
+  const out = [];
+  const motif = /\bhistory\.(?:pushState|replaceState)\s*=(?!=)|defineProperty\(\s*(?:window\.)?history\b|__socleLiensCanoniques/;
+  (function parcourir(dir) {
+    if (!fs.existsSync(dir)) return;
+    for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
+      const p = path.join(dir, e.name);
+      if (e.isDirectory()) {
+        if (e.name === "node_modules" || e.name === "__tests__") continue;
+        parcourir(p);
+      } else if (/\.(tsx?|jsx?|mjs|cjs)$/.test(e.name) && !/\.(test|spec)\./.test(e.name)) {
+        const rel = path.relative(site, p);
+        if (rel === "src/data/navigation.ts") continue;
+        const code = lire(p).replace(/\/\*[\s\S]*?\*\//g, "").replace(/(^|[^:])\/\/.*$/gm, "$1");
+        if (motif.test(code)) out.push(rel);
+      }
+    }
+  })(path.join(site, "src"));
   return out;
 }
 

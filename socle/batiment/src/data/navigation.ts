@@ -106,6 +106,95 @@ export function lienCanonique(href: string): string {
 }
 
 /*
+ * v1.6.5, point 7 (Frederic, 11.11) : les liens APRES l'execution du
+ * JavaScript. La passe du build (`scripts/socle-liens.mjs`) corrige le HTML
+ * servi ; mais le code du site rend ses liens sans « / », et une navigation
+ * sans rechargement les remet dans la page affichee, que Google lit aussi.
+ * Ce module, charge par l'en-tete sur chaque page, tient la regle au centre :
+ *   1. l'historique du navigateur (`pushState`, `replaceState`) recoit
+ *      l'adresse avec « / » final : l'adresse affichee, le rechargement, le
+ *      partage et la page vue d'Umami la portent. Son enveloppe reste la
+ *      premiere appelee meme si Umami pose la sienne apres (accesseur) ;
+ *   2. un observateur du document remet le « / » a tout lien interne qui
+ *      apparait ou change apres l'hydratation (React ne relit pas un attribut
+ *      dont la valeur ne change pas dans son code).
+ * Meme regle que `lienCanonique` : racine, fichiers, liens externes,
+ * mailto:, tel:, ancres seules intacts. Rien ne tourne au prerendu (pas de
+ * `window`) ni avant l'hydratation : le HTML servi porte deja le « / ».
+ */
+export function urlCanonique(url: string, origine: string): string {
+  if (url.startsWith("#") || url.startsWith("?")) return url;
+  let u: URL;
+  try {
+    u = new URL(url, `${origine}/`);
+  } catch {
+    return url;
+  }
+  if (u.origin !== origine || !/^https?:$/.test(u.protocol)) return url;
+  const relatif = `${u.pathname}${u.search}${u.hash}`;
+  const canon = lienCanonique(relatif);
+  if (canon === relatif) return url;
+  return /^[a-z][a-z0-9+.-]*:/i.test(url) || url.startsWith("//") ? `${u.origin}${canon}` : canon;
+}
+
+type FenetreSocle = Window & typeof globalThis & { __socleLiensCanoniques?: boolean };
+
+export function installerLiensCanoniques(w: FenetreSocle | undefined = typeof window === "undefined" ? undefined : window): boolean {
+  if (!w || !w.document || !w.history || w.__socleLiensCanoniques) return false;
+  w.__socleLiensCanoniques = true;
+  const origine = w.location.origin;
+  const histoire = w.history;
+  for (const nom of ["pushState", "replaceState"] as const) {
+    const natif = histoire[nom];
+    let interieur: History[typeof nom] = natif;
+    let dedans = false;
+    const enveloppe = function (this: History, donnees: unknown, titre: string, url?: string | URL | null) {
+      if (dedans) return natif.call(histoire, donnees, titre, url);
+      dedans = true;
+      try {
+        const neuve = url == null ? url : urlCanonique(String(url), origine);
+        return interieur.call(histoire, donnees, titre, neuve);
+      } finally {
+        dedans = false;
+      }
+    } as History[typeof nom];
+    Object.defineProperty(histoire, nom, {
+      configurable: true,
+      get: () => enveloppe,
+      set: (v: History[typeof nom]) => {
+        if (v !== enveloppe) interieur = v;
+      },
+    });
+  }
+  const corriger = (a: Element) => {
+    const h = a.getAttribute("href");
+    if (!h) return;
+    const n = urlCanonique(h, origine);
+    if (n !== h) a.setAttribute("href", n);
+  };
+  const tout = (racine: ParentNode) => racine.querySelectorAll("a[href]").forEach(corriger);
+  const demarrer = () => {
+    tout(w.document);
+    new w.MutationObserver((mutations) => {
+      for (const m of mutations) {
+        if (m.type === "attributes" && m.target instanceof w.Element && m.target.tagName === "A") corriger(m.target);
+        m.addedNodes.forEach((n) => {
+          if (!(n instanceof w.Element)) return;
+          if (n.tagName === "A") corriger(n);
+          tout(n);
+        });
+      }
+    }).observe(w.document.documentElement, { subtree: true, childList: true, attributes: true, attributeFilter: ["href"] });
+  };
+  /* Apres l'hydratation : au premier repos du navigateur, sinon apres le chargement. */
+  const plusTard = (f: () => void) => (typeof w.requestIdleCallback === "function" ? w.requestIdleCallback(f, { timeout: 2000 }) : w.setTimeout(f, 0));
+  if (w.document.readyState === "complete") plusTard(demarrer);
+  else w.addEventListener("load", () => plusTard(demarrer), { once: true });
+  return true;
+}
+installerLiensCanoniques();
+
+/*
  * Le libelle du bouton de devis, propre au site. Vide, le bouton dit « Demande
  * gratuite » ou « Kostenlose Anfrage » (seule la demande est gratuite, jamais
  * le devis : Frederic, 09.11). Un site de rendez-vous ecrit ici

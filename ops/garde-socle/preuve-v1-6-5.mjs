@@ -362,6 +362,99 @@ for (const [libelle, fichiers, rouge] of [
   if (rouge) constat(gardeEffet(ancienne, fichiers).length === 0, `contre-epreuve ${refAncienne} : ${libelle} : passait`);
 }
 
+/*
+ * 9. Point 7 (Frederic, 11.11) : la tenue des liens canoniques APRES
+ * l'execution du JavaScript, dans src/data/navigation.ts. Ici, la regle et
+ * l'historique, sur une fenetre doublure ; la mesure dans un vrai navigateur
+ * (hydratation, navigations, console) se fait sur les sites construits.
+ */
+async function chargerNavigation(version) {
+  const src = path.join(version, "socle/batiment/src");
+  const sortie = await esbuild.build({
+    entryPoints: [path.join(src, "data/navigation.ts")], bundle: true, write: false, format: "esm", platform: "neutral", logLevel: "silent",
+    plugins: [{ name: "doublures", setup(b) {
+      b.onResolve({ filter: /^@\/(routes|data\/config)$/ }, (x) => ({ path: x.path, namespace: "doublure" }));
+      b.onLoad({ filter: /.*/, namespace: "doublure" }, (x) => ({ loader: "js", contents: x.path === "@/routes"
+        ? "export const NotFound = () => null; export const pagesForRoute = () => [() => null];"
+        : 'export const SITE_CONFIG = { name: "Site", phone: "" }; export const phoneHref = () => null;' }));
+    } }],
+  });
+  const f = path.join(tmp, `nav-${Math.random().toString(36).slice(2)}.mjs`);
+  fs.writeFileSync(f, sortie.outputFiles[0].text);
+  return import(`file://${f}`);
+}
+const nav = await chargerNavigation(socleActuel);
+const ORIGINE = "https://helvetic-exemple.ch";
+for (const [avant, apres, libelle] of [
+  ["/staedte", "/staedte/", "chemin"],
+  ["/leistungen/rohrreinigung#ablauf", "/leistungen/rohrreinigung/#ablauf", "ancre gardee"],
+  ["/staedte?seite=2", "/staedte/?seite=2", "parametres gardes"],
+  ["https://helvetic-exemple.ch/kontakt", "https://helvetic-exemple.ch/kontakt/", "adresse absolue du site"],
+  ["//helvetic-exemple.ch/kontakt", "https://helvetic-exemple.ch/kontakt/", "adresse // du site"],
+  ["/", "/", "racine"],
+  ["/staedte/", "/staedte/", "deja avec « / »"],
+  ["/sitemap.xml", "/sitemap.xml", "fichier"],
+  ["/bild.webp", "/bild.webp", "image"],
+  ["#formular", "#formular", "ancre seule"],
+  ["?seite=2", "?seite=2", "parametres seuls"],
+  ["https://helvetic-rohrreinigung.ch/staedte", "https://helvetic-rohrreinigung.ch/staedte", "autre domaine du parc"],
+  ["https://www.admin.ch/gov", "https://www.admin.ch/gov", "lien externe"],
+  ["mailto:info@exemple.ch", "mailto:info@exemple.ch", "mailto:"],
+  ["tel:+41000000000", "tel:+41000000000", "tel:"],
+]) {
+  const o = nav.urlCanonique(avant, ORIGINE);
+  constat(o === apres, `liens apres JavaScript : ${libelle} : « ${avant} » donne « ${o} »`);
+}
+{
+  const natifs = [];
+  const fenetre = {
+    location: { origin: ORIGINE },
+    document: { readyState: "loading", documentElement: {} },
+    addEventListener: () => {},
+    setTimeout: () => 0,
+    MutationObserver: class { observe() {} },
+    history: {
+      pushState(d, t, u) { natifs.push(["push", u]); },
+      replaceState(d, t, u) { natifs.push(["replace", u]); },
+    },
+  };
+  constat(nav.installerLiensCanoniques(fenetre) === true && nav.installerLiensCanoniques(fenetre) === false, "historique : installe une fois, pas deux");
+  fenetre.history.pushState(null, "", "/staedte");
+  fenetre.history.replaceState(null, "", "/kontakt?x=1");
+  fenetre.history.pushState(null, "", "https://www.admin.ch/gov");
+  fenetre.history.pushState(null, "");
+  constat(JSON.stringify(natifs) === JSON.stringify([["push", "/staedte/"], ["replace", "/kontakt/?x=1"], ["push", "https://www.admin.ch/gov"], ["push", undefined]]), `historique : l'adresse affichee prend le « / » (${JSON.stringify(natifs)})`);
+  /* Umami pose son enveloppe APRES : il doit voir l'adresse avec « / », sans boucle. */
+  const vuParUmami = [];
+  const avantUmami = fenetre.history.pushState;
+  fenetre.history.pushState = function (d, t, u) { vuParUmami.push(u); return avantUmami.call(this, d, t, u); };
+  natifs.length = 0;
+  fenetre.history.pushState(null, "", "/leistungen");
+  constat(JSON.stringify(vuParUmami) === JSON.stringify(["/leistungen/"]) && JSON.stringify(natifs) === JSON.stringify([["push", "/leistungen/"]]), `historique : Umami pose apres voit « /leistungen/ », un seul appel natif (${JSON.stringify(vuParUmami)} ${JSON.stringify(natifs)})`);
+  constat(fenetre.history.pushState === avantUmami, "historique : l'enveloppe du socle reste la premiere appelee");
+}
+const navSource = fs.readFileSync(path.join(socleActuel, "socle/batiment/src/data/navigation.ts"), "utf8");
+constat(/^installerLiensCanoniques\(\);$/m.test(navSource) && /new w\.MutationObserver/.test(navSource) && /attributeFilter: \["href"\]/.test(navSource), "navigation.ts : installe au chargement ; observateur des liens ajoutes ou changes");
+constat(nav.installerLiensCanoniques(undefined) === false, "prerendu (pas de window) : rien ne s'installe");
+/* La garde du point 7. */
+for (const [libelle, fichiers, rouge] of [
+  ["historique reecrit par le site", { "src/lib/suivi.ts": "window.history.pushState = function () {};" }, true],
+  ["defineProperty sur history", { "src/lib/suivi.ts": "Object.defineProperty(window.history, 'pushState', { value: f });" }, true],
+  ["mecanisme desactive", { "src/main.tsx": "(window as any).__socleLiensCanoniques = true;" }, true],
+  ["navigation.ts sans installation", { "src/data/navigation.ts": navSource.replace(/^installerLiensCanoniques\(\);$/m, "") }, true],
+  ["appel normal de l'historique", { "src/lib/suivi.ts": "window.history.pushState(null, '', '/x/'); if (history.pushState === f) {}" }, false],
+  ["navigation.ts du socle", { "src/data/navigation.ts": navSource }, false],
+]) {
+  const l = (() => {
+    const d = fs.mkdtempSync(path.join(tmp, "nav-g-"));
+    const tout = { "package.json": JSON.stringify({ name: "@workspace/helvetic-preuve-de", scripts: { build: "x" } }), "src/data/config.ts": CONFIG_DOMAINE("de"), "scripts/socle-manifeste.json": JSON.stringify({ fichiers: [] }), ...fichiers };
+    for (const [k, v] of Object.entries(tout)) { fs.mkdirSync(path.dirname(path.join(d, k)), { recursive: true }); fs.writeFileSync(path.join(d, k), v); }
+    const r = spawnSync("node", [actuelle, d], { encoding: "utf8" });
+    return `${r.stdout}${r.stderr}`.split("\n").filter((x) => x.includes("liens canoniques"));
+  })();
+  constat(rouge ? l.length > 0 : l.length === 0, `garde : ${libelle} : ${rouge ? "rouge" : "vert"}`);
+}
+
 /* 7. La passe centrale des liens, apres le prerendu (Frederic, 11.11). */
 const passe = await import(`file://${path.join(racine, "socle/batiment/scripts/socle-liens.mjs")}`);
 for (const [domaine, avant, apres, libelle] of [
