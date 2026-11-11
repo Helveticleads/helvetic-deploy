@@ -21,7 +21,7 @@
     {
       "source": "src/components/socle/BlocConsentement.tsx",
       "chemin": "src/components/socle/BlocConsentement.tsx",
-      "empreinte": "eb4ec31c88d50bf766cab29de72be269fd961fb7cbd1aacc7e0cb9a1c8c3109c"
+      "empreinte": "6f53fca2b1989bce810374b75253e891818f59b9be4b39a5c24b430f89e1aad3"
     },
     {
       "source": "src/components/socle/reserve-widget.css",
@@ -47,7 +47,7 @@
     {
       "source": "src/lib/api.ts",
       "chemin": "src/lib/api.ts",
-      "empreinte": "0d0de7e6e03724f39f3687e9df0fa2f84c566c8f6faea34409297496b3c3b5ad"
+      "empreinte": "41fc1591ac9e7fafc3560cca3b389a3ead0c5e6b865bbeffe9c3b0a71b6688c3"
     },
     {
       "source": "scripts/socle-404.mjs",
@@ -67,7 +67,7 @@
     {
       "source": "../../ops/garde-socle/verifier.mjs",
       "chemin": "scripts/garde-socle.mjs",
-      "empreinte": "f3b5a666c08c6c4db9b0199c5ee0566071852ac60bdefd21233fe0d18bba4352"
+      "empreinte": "7704481c1e8267d7c87eb850eef2230f8067f7fb0d9423c86cc653715eccda94"
     }
   ]
 }

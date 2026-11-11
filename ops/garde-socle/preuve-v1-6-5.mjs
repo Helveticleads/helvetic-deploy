@@ -238,6 +238,130 @@ for (const langue of ["fr", "de"]) {
     constat(!g.sortie.includes(`liens:${LIENS}`), `garde des liens sur le rendu ${nom} ${langue} de la v1.6.5 : aucun defaut`);
   }
 }
+/*
+ * 8. Point 6 (Frederic, 11.11 ; CONTRAT-FORMULAIRE-BATIMENT-04-11.md) : l'envoi
+ * du lead, BOUCHONNE (aucun reseau) : champs, succes explicite, lead_submit
+ * apres la reponse, message d'erreur dans la langue du site.
+ */
+async function chargerApi(version) {
+  const fichier = path.join(version, "socle/batiment/src/lib/api.ts");
+  const sortie = await esbuild.build({
+    entryPoints: [fichier], bundle: true, write: false, format: "esm", platform: "neutral", logLevel: "silent",
+    define: { "import.meta.env": "{}" },
+    plugins: [{ name: "config", setup(b) {
+      b.onResolve({ filter: /^@\/data\/config$/ }, () => ({ path: "config", namespace: "doublure" }));
+      b.onLoad({ filter: /.*/, namespace: "doublure" }, () => ({ contents: 'export const SITE_CONFIG = { domainBare: "helvetique-exemple.ch" };', loader: "js" }));
+    } }],
+  });
+  const f = path.join(tmp, `api-${Math.random().toString(36).slice(2)}.mjs`);
+  fs.writeFileSync(f, sortie.outputFiles[0].text);
+  return import(`file://${f}`);
+}
+const apiActuel = await chargerApi(socleActuel);
+const apiAncien = await chargerApi(socleAncien);
+const UUID4 = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
+async function envoyer(api, { reponse, langue = "fr", consentAt = "2026-11-11T08:00:00.000Z", jette = false, source }) {
+  const journal = [];
+  globalThis.window = { location: { href: "https://helvetique-exemple.ch/villes/sion/?utm_source=ads&gclid=abc#formulaire" } };
+  globalThis.__socleConsentementAt = consentAt;
+  globalThis.umami = { track: (nom, donnees) => journal.push(["track", nom, donnees]) };
+  globalThis.fetch = async (url, opts) => {
+    journal.push(["fetch", url, opts]);
+    await new Promise((r) => setTimeout(r, 15));
+    if (jette) throw new TypeError("Failed to fetch");
+    journal.push(["reponse", reponse.status]);
+    return { ok: reponse.status >= 200 && reponse.status < 300, status: reponse.status, json: async () => { if (reponse.corps === undefined) throw new SyntaxError("pas du JSON"); return reponse.corps; } };
+  };
+  const charge = api.construireCharge({ formType: "contact", nom: "Alex Dupraz", telephone: "0791112233", consent: true, piege: "", langue });
+  if (source) charge.source = source;
+  let resultat = null, erreur = null;
+  try { resultat = await api.submitLead(charge); } catch (e) { erreur = e.message; }
+  const envoi = journal.find((j) => j[0] === "fetch");
+  const corps = envoi ? JSON.parse(envoi[2].body) : null;
+  delete globalThis.window; delete globalThis.__socleConsentementAt; delete globalThis.umami; delete globalThis.fetch;
+  return { journal, corps, entetes: envoi?.[2].headers ?? {}, resultat, erreur, tracks: journal.filter((j) => j[0] === "track") };
+}
+{
+  const r = await envoyer(apiActuel, { reponse: { status: 201, corps: { lead_id: 812 } }, source: "contact" });
+  constat(UUID4.test(r.corps?.event_id ?? ""), `envoi : event_id UUID v4 (${r.corps?.event_id})`);
+  constat(r.entetes["idempotency-key"] === r.corps.event_id, "envoi : en-tete Idempotency-Key = event_id");
+  constat(r.corps.origine_demande === "https://helvetique-exemple.ch/villes/sion/", `envoi : origine_demande sans parametres de suivi ni ancre (${r.corps.origine_demande})`);
+  constat(r.corps.consentement_at === "2026-11-11T08:00:00.000Z", "envoi : consentement_at = instant de la case cochee");
+  constat(r.corps.source === "formulaire" && r.corps.form_type === "contact", "envoi : source « formulaire » (meme si l'appelant ecrit « contact »), form_type garde");
+  constat(r.corps.consent === true && r.corps.website === "" && r.corps.name === "Alex Dupraz", "envoi : consent, piege et nom inchanges");
+  const iReponse = r.journal.findIndex((j) => j[0] === "reponse");
+  const iTrack = r.journal.findIndex((j) => j[0] === "track");
+  constat(r.tracks.length === 1 && r.tracks[0][1] === "lead_submit" && iTrack > iReponse && r.tracks[0][2].event_id === r.corps.event_id, "succes 201 : un seul lead_submit, APRES la reponse, avec le meme event_id");
+  constat(r.erreur === null && r.resultat.event_id === r.corps.event_id && r.resultat.lead_id === 812, "succes 201 : resolu (le site affiche merci)");
+  const r2 = await envoyer(apiActuel, { reponse: { status: 201, corps: { lead_id: 813 } } });
+  constat(r2.corps.event_id !== r.corps.event_id, "deux envois : deux event_id differents");
+}
+{
+  const r = await envoyer(apiActuel, { reponse: { status: 200, corps: { ok: true, lead_id: 812, deja_recu: true } } });
+  constat(r.erreur === null && r.tracks.length === 0, "doublon 200 deja_recu : resolu, AUCUN lead_submit");
+}
+for (const [libelle, reponse, langue, attendu] of [
+  ["2xx au corps vide {}", { status: 201, corps: {} }, "fr", "Votre demande n'a pas pu être enregistrée."],
+  ["2xx sans JSON", { status: 200, corps: undefined }, "fr", "Votre demande n'a pas pu être enregistrée."],
+  ["500", { status: 500, corps: { ok: true } }, "fr", "Votre demande n'a pas pu être enregistrée."],
+  ["400 telephone_requis, site DE", { status: 400, corps: { error: "telephone_requis" } }, "de", "Ihre Anfrage konnte nicht gespeichert werden."],
+  ["429, site DE", { status: 429, corps: undefined }, "de", "Ihre Anfrage konnte nicht gespeichert werden."],
+]) {
+  const r = await envoyer(apiActuel, { reponse, langue });
+  constat(r.erreur?.startsWith(attendu) && /conservées|bleiben erhalten/.test(r.erreur) && r.tracks.length === 0, `echec ${libelle} : erreur claire (« ${r.erreur} »), aucun lead_submit, pas de merci`);
+}
+for (const langue of ["fr", "de"]) {
+  const r = await envoyer(apiActuel, { reponse: { status: 201, corps: { lead_id: 1 } }, langue, jette: true });
+  constat(r.erreur?.startsWith(langue === "fr" ? "Connexion impossible" : "Keine Verbindung") && r.tracks.length === 0, `reseau coupe ${langue} : « ${r.erreur} », aucun lead_submit`);
+}
+{
+  const r = await envoyer(apiActuel, { reponse: { status: 201, corps: { lead_id: 1 } }, consentAt: null });
+  constat(!Number.isNaN(Date.parse(r.corps.consentement_at)), "case cochee sans instant releve : consentement_at = instant de l'envoi");
+  const v = await envoyer(apiAncien, { reponse: { status: 201, corps: { lead_id: 1 } } });
+  constat(!v.corps.event_id && !v.corps.origine_demande && !v.corps.consentement_at && v.corps.source !== "formulaire" && v.tracks.length === 0, `contre-epreuve ${refAncienne} : ni event_id, ni origine_demande, ni consentement_at, ni source « formulaire », ni lead_submit`);
+  const w = await envoyer(apiAncien, { reponse: { status: 201, corps: {} } });
+  constat(w.erreur === null, `contre-epreuve ${refAncienne} : un 2xx au corps vide valait succes (merci)`);
+}
+const bloc = fs.readFileSync(path.join(socleActuel, "socle/batiment/src/components/socle/BlocConsentement.tsx"), "utf8");
+constat(/__socleConsentementAt = e\.target\.checked \? new Date\(\)\.toISOString\(\) : null;\s*onConsent\(e\.target\.checked\)/.test(bloc), "BlocConsentement : l'instant de la case est releve au clic, puis onConsent");
+const apiSocle = fs.readFileSync(path.join(socleActuel, "socle/batiment/src/lib/api.ts"), "utf8");
+constat(!/site_key|X-Service-Key|service[_-]?key|token|secret/i.test(apiSocle.replace(/\/\*[\s\S]*?\*\//g, "")), "api.ts : aucune cle ni aucun secret dans le code (site_key et cle de service : relais serveur)");
+/* La garde du point 6. */
+const { mesureEnvoiLead } = await import(`file://${actuelle}`);
+constat(mesureEnvoiLead(apiSocle).length === 0, "garde : api.ts du socle : aucun defaut d'envoi");
+for (const [libelle, muter, attendu] of [
+  ["sans event_id", (s) => s.replace("event_id: eventId,", ""), "n'envoie pas event_id"],
+  ["sans origine_demande", (s) => s.replace("origine_demande: origineDemande(),", ""), "n'envoie pas origine_demande"],
+  ["sans consentement_at", (s) => s.replace(/consentement_at: payload\.consent[^\n]*\n/, "\n"), "n'envoie pas consentement_at"],
+  ["source « hero »", (s) => s.replace('    source: "formulaire",\n    event_id', '    source: "hero",\n    event_id'), "n'envoie pas source « formulaire »"],
+  ["lead_submit avant la reponse", (s) => s.replace("  let response: Response;", "  signalerLeadSubmit(eventId);\n  let response: Response;"), "n'envoie pas lead_submit APRES la reponse"],
+  ["lead_submit ecrit dans submitLead", (s) => s.replace("  return resultat;", '  (globalThis as any).umami?.track("lead_submit");\n  return resultat;'), "ailleurs que dans signalerLeadSubmit"],
+  ["succes sur un simple 2xx", (s) => s.replace("response.ok && estSucces(corps)", "response.ok"), "EXPLICITE"],
+]) {
+  const m = muter(apiSocle);
+  constat(m !== apiSocle && mesureEnvoiLead(m).some((x) => x.includes(attendu)), `garde : api.ts ${libelle} : rouge`);
+}
+function gardeEffet(verifier, fichiers) {
+  const d = fs.mkdtempSync(path.join(tmp, "eff-"));
+  const tout = { "package.json": JSON.stringify({ name: "@workspace/helvetic-preuve-de", scripts: { build: "vite build && node ./scripts/prerender-content.mjs && node ./scripts/socle-liens.mjs dist/public && node ./scripts/garde-socle.mjs --pages dist/public" } }), "src/data/config.ts": CONFIG_DOMAINE("de"), "src/lib/api.ts": apiSocle, "scripts/socle-manifeste.json": JSON.stringify({ fichiers: [] }), ...fichiers };
+  for (const [k, v] of Object.entries(tout)) { fs.mkdirSync(path.dirname(path.join(d, k)), { recursive: true }); fs.writeFileSync(path.join(d, k), v); }
+  const r = spawnSync("node", [verifier, d], { encoding: "utf8" });
+  return `${r.stdout}${r.stderr}`.split("\n").filter((l) => l.includes("lead_submit") || l.includes("src/lib/api.ts n"));
+}
+for (const [libelle, fichiers, rouge] of [
+  ["page Danke qui envoie lead_submit a l'affichage", { "src/pages/Danke.tsx": 'useEffect(() => { window.umami?.track?.("lead_submit"); }, []);' }, true],
+  ["page merci, dataLayer", { "src/pages/Merci.tsx": 'w.dataLayer.push({ event: "lead_submit" });' }, true],
+  ["constante d'evenements", { "src/data/analytics.ts": 'export const EVENTS = { leadSubmit: "lead_submit" };' }, true],
+  ["index.html, data-umami-event", { "index.html": '<button data-umami-event="lead_submit">x</button>' }, true],
+  ["mention en texte, page de confidentialite", { "src/pages/Datenschutz.tsx": "<li><code>lead_submit</code> : Anfrage gesendet</li>" }, false],
+  ["commentaire", { "src/lib/x.ts": "// lead_submit part de submitLead\n/* \"lead_submit\" */ export const a = 1;" }, false],
+  ["fichier de test", { "src/lib/x.test.mjs": 'assert(estNouveau("lead_submit"));' }, false],
+]) {
+  const l = gardeEffet(actuelle, fichiers);
+  constat(rouge ? l.some((x) => x.includes("lead_submit envoye hors de submitLead")) : l.length === 0, `garde : ${libelle} : ${rouge ? "rouge" : "vert"}`);
+  if (rouge) constat(gardeEffet(ancienne, fichiers).length === 0, `contre-epreuve ${refAncienne} : ${libelle} : passait`);
+}
+
 /* 7. La passe centrale des liens, apres le prerendu (Frederic, 11.11). */
 const passe = await import(`file://${path.join(racine, "socle/batiment/scripts/socle-liens.mjs")}`);
 for (const [domaine, avant, apres, libelle] of [

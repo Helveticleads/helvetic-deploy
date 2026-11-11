@@ -98,7 +98,11 @@ export function BlocConsentement({
           type="checkbox"
           required
           checked={consent}
-          onChange={(e) => onConsent(e.target.checked)}
+          onChange={(e) => {
+            /* v1.6.5 (Frederic, 11.11) : l'instant ou la case est cochee, lu par submitLead (consentement_at). */
+            (globalThis as { __socleConsentementAt?: string | null }).__socleConsentementAt = e.target.checked ? new Date().toISOString() : null;
+            onConsent(e.target.checked);
+          }}
           aria-describedby={idAide}
           className="mt-0.5 h-[1.15rem] w-[1.15rem] shrink-0 accent-accent"
         />

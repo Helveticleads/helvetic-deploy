@@ -223,6 +223,17 @@ function mesuresEffet(site, defauts) {
     if (!/\bwebsite:\s*opts\.piege/.test(api)) {
       defauts.push("effet:src/lib/api.ts ne transmet pas la valeur du champ piege dans website");
     }
+    for (const d of mesureEnvoiLead(api)) defauts.push(`effet:src/lib/api.ts ${d}`);
+  }
+
+  /*
+   * 3 bis. v1.6.5 (Frederic, 11.11) : `lead_submit` ne part que de submitLead,
+   * apres la reponse du serveur. Un `lead_submit` ecrit ailleurs dans le code
+   * du site (page de remerciement, dataLayer, constante...) est refuse.
+   */
+  const horsSocle = fichiersLeadSubmit(site);
+  if (horsSocle.length > 0) {
+    defauts.push(`effet:lead_submit envoye hors de submitLead (page de remerciement ou autre) : ${horsSocle.join(", ")} ; il part desormais de src/lib/api.ts apres la reponse du serveur`);
   }
 
   /* 4. Tout fichier qui construit une charge monte le bloc de consentement. */
@@ -1168,6 +1179,70 @@ export function devisGratuits(texte) {
     trouves.push({ ligne: texte.slice(0, m.index).split("\n").length, texte: m[0] });
   }
   return trouves;
+}
+
+/*
+ * v1.6.5 (Frederic, 11.11 ; CONTRAT-FORMULAIRE-BATIMENT-04-11.md) : l'envoi du
+ * lead porte event_id (aussi en-tete Idempotency-Key), origine_demande,
+ * consentement_at et source « formulaire » ; lead_submit part APRES la
+ * reponse, seulement sur un succes explicite. Lu dans src/lib/api.ts.
+ */
+export function mesureEnvoiLead(api) {
+  const d = [];
+  const i = api.indexOf("export async function submitLead");
+  const corps = i < 0 ? "" : api.slice(i, api.indexOf("\n}\n", i) + 2);
+  if (!corps) return ["n'a pas de fonction submitLead"];
+  /* Les champs sont cherches dans l'objet ENVOYE (`const charge = { ... };`), pas ailleurs dans la fonction. */
+  const iCharge = corps.indexOf("const charge");
+  const charge = iCharge < 0 ? "" : corps.slice(iCharge, corps.indexOf("\n  };", iCharge));
+  for (const [champ, motif, ou] of [
+    ["event_id", /\bevent_id:\s*eventId\b/, charge],
+    ["origine_demande", /\borigine_demande:\s*origineDemande\(\)/, charge],
+    ["consentement_at", /\bconsentement_at:\s*payload\.consent\b/, charge],
+    ["source « formulaire »", /\bsource:\s*"formulaire"/, charge],
+    ["en-tete Idempotency-Key", /"idempotency-key":\s*eventId\b/i, corps],
+  ]) {
+    if (!motif.test(ou)) d.push(`n'envoie pas ${champ}`);
+  }
+  if (!/body:\s*JSON\.stringify\(\s*charge\s*\)/.test(corps)) d.push("n'envoie pas l'objet charge (body: JSON.stringify(charge))");
+  const iFetch = corps.indexOf("await fetch(");
+  const iSucces = corps.search(/if\s*\(\s*!\s*succes\s*\)\s*throw\b/);
+  const iSignal = corps.indexOf("signalerLeadSubmit(");
+  if (iFetch < 0 || iSucces < 0 || iSignal < 0 || !(iFetch < iSucces && iSucces < iSignal)) {
+    d.push("n'envoie pas lead_submit APRES la reponse et seulement sur un succes");
+  }
+  const sansSignal = api.replace(/function signalerLeadSubmit[\s\S]*?\n}\n/, "");
+  if (/["'`]lead_submit["'`]/.test(sansSignal.replace(/\/\*[\s\S]*?\*\//g, "").replace(/(^|[^:])\/\/.*$/gm, "$1"))) {
+    d.push("envoie lead_submit ailleurs que dans signalerLeadSubmit");
+  }
+  if (!/response\.ok\s*&&\s*estSucces\(/.test(corps)) d.push("ne tient pas un succes pour EXPLICITE (2xx et corps attendu)");
+  return d;
+}
+
+/** Les fichiers du site, hors socle, qui envoient lead_submit (commentaires retires ; une mention en texte, `<code>lead_submit</code>`, passe). */
+export function fichiersLeadSubmit(site) {
+  const socle = new Set(["src/lib/api.ts"]);
+  const out = [];
+  (function parcourir(dir) {
+    if (!fs.existsSync(dir)) return;
+    for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
+      const p = path.join(dir, e.name);
+      if (e.isDirectory()) {
+        if (e.name === "node_modules" || e.name === "__tests__") continue;
+        parcourir(p);
+      } else if (/\.(tsx?|jsx?|mjs|cjs)$/.test(e.name) && !/\.(test|spec)\./.test(e.name)) {
+        const rel = path.relative(site, p);
+        if (socle.has(rel)) continue;
+        const code = lire(p).replace(/\/\*[\s\S]*?\*\//g, "").replace(/(^|[^:])\/\/.*$/gm, "$1");
+        if (/["'`]lead_submit["'`]/.test(code)) out.push(rel);
+      }
+    }
+  })(path.join(site, "src"));
+  for (const f of ["index.html"]) {
+    const p = path.join(site, f);
+    if (fs.existsSync(p) && /["'`]lead_submit["'`]|data-umami-event=["']lead_submit/.test(lire(p))) out.push(f);
+  }
+  return out;
 }
 
 export function verifier({ site, manifeste, reference }) {

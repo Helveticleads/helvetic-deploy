@@ -34,11 +34,17 @@ export type LeadPayload = {
   source_page: string;
   form_type: "hero" | "contact";
   /**
-   * Double `form_type`. `resolveFormType` lit `form_type ?? type_formulaire ??
-   * form ?? source` : envoyer les deux rend la charge independante de la
-   * version d'api-server deployee.
+   * v1.6.5 (Frederic, 11.11 ; CONTRAT-FORMULAIRE-BATIMENT-04-11.md) : toujours
+   * « formulaire », pose par submitLead quelle que soit la valeur de l'appelant.
+   * Le type du formulaire voyage dans `form_type`.
    */
-  source: "hero" | "contact";
+  source?: "hero" | "contact" | "formulaire";
+  /** v1.6.5 : identifiant unique de l'envoi (UUID v4), repris par lead_submit. Pose par submitLead. */
+  event_id?: string;
+  /** v1.6.5 : URL absolue de la page du formulaire, sans parametres ni ancre. Posee par submitLead. */
+  origine_demande?: string;
+  /** v1.6.5 : instant ISO 8601 ou la case de consentement a ete cochee. Pose par submitLead. */
+  consentement_at?: string;
   /** Nom complet. Le normaliseur exige au moins 2 caracteres. */
   name: string;
   phone: string;
@@ -69,38 +75,110 @@ export type LeadPayload = {
   telephone?: string;
 };
 
-export type LeadResult = { lead_id?: string; ok?: boolean; channels?: string[] };
+export type LeadResult = { lead_id?: string | number; ok?: boolean; success?: boolean; deja_recu?: boolean; channels?: string[]; event_id: string };
+
+/*
+ * v1.6.5 (Frederic, 11.11 ; contrat de reference :
+ * _a-transmettre-crm/CONTRAT-FORMULAIRE-BATIMENT-04-11.md). Chaque envoi porte :
+ *   - `event_id` : un identifiant unique engendre a l'envoi, aussi en-tete
+ *     `Idempotency-Key`, et repris par l'evenement Umami `lead_submit` ;
+ *   - `origine_demande` : l'URL de la page, sans parametres (suivi compris) ni ancre ;
+ *   - `consentement_at` : l'instant ou la case a ete cochee (BlocConsentement) ;
+ *   - `source` : « formulaire ».
+ * « merci » ne vient que d'un succes EXPLICITE : reponse 2xx ET corps attendu
+ * (`ok`, `success`, `lead_id` ou `deja_recu`). Sinon une erreur claire, dans la
+ * langue du site ; la saisie reste dans le formulaire, qui n'est pas vide.
+ * `lead_submit` part APRES la reponse, seulement sur un succes, avec le meme
+ * `event_id`, et jamais pour un doublon (`deja_recu`). Aucune cle ni aucun
+ * secret ici : `site_key` et la cle de service sont l'affaire du relais serveur.
+ */
+const MESSAGES = {
+  fr: {
+    reseau: "Connexion impossible : votre demande n'est pas partie. Vos informations sont conservées, merci de réessayer dans un instant.",
+    echec: "Votre demande n'a pas pu être enregistrée. Vos informations sont conservées, merci de réessayer dans un instant.",
+  },
+  de: {
+    reseau: "Keine Verbindung: Ihre Anfrage wurde nicht gesendet. Ihre Angaben bleiben erhalten, bitte versuchen Sie es in einem Moment erneut.",
+    echec: "Ihre Anfrage konnte nicht gespeichert werden. Ihre Angaben bleiben erhalten, bitte versuchen Sie es in einem Moment erneut.",
+  },
+};
+
+/** Un identifiant unique (UUID v4) pour cet envoi. */
+export function nouvelEventId(): string {
+  const c = (globalThis as { crypto?: Crypto }).crypto;
+  if (c && typeof c.randomUUID === "function") return c.randomUUID();
+  const o = new Uint8Array(16);
+  if (c && typeof c.getRandomValues === "function") c.getRandomValues(o);
+  else for (let i = 0; i < 16; i += 1) o[i] = Math.floor(Math.random() * 256);
+  o[6] = (o[6] & 0x0f) | 0x40;
+  o[8] = (o[8] & 0x3f) | 0x80;
+  const h = [...o].map((b) => b.toString(16).padStart(2, "0")).join("");
+  return `${h.slice(0, 8)}-${h.slice(8, 12)}-${h.slice(12, 16)}-${h.slice(16, 20)}-${h.slice(20)}`;
+}
+
+/** L'URL absolue de la page, sans parametres ni ancre (aucun identifiant de campagne). */
+export function origineDemande(): string {
+  if (typeof window === "undefined") return "";
+  try {
+    const u = new URL(window.location.href);
+    return `${u.origin}${u.pathname}`;
+  } catch {
+    return "";
+  }
+}
+
+/** Le corps d'un succes explicite. */
+function estSucces(corps: unknown): corps is Omit<LeadResult, "event_id"> {
+  if (!corps || typeof corps !== "object") return false;
+  const c = corps as Record<string, unknown>;
+  return c.ok === true || c.success === true || c.deja_recu === true || (c.lead_id !== undefined && c.lead_id !== null && c.lead_id !== "");
+}
+
+/** L'evenement Umami de conversion, apres un succes. */
+function signalerLeadSubmit(eventId: string): void {
+  try {
+    const umami = (globalThis as { umami?: { track?: (n: string, d?: Record<string, unknown>) => void } }).umami;
+    if (umami && typeof umami.track === "function") umami.track("lead_submit", { event_id: eventId });
+  } catch {
+    /* le suivi ne doit jamais casser l'envoi */
+  }
+}
 
 export async function submitLead(payload: LeadPayload): Promise<LeadResult> {
+  const langue = payload.site_language === "de" ? "de" : "fr";
+  const eventId = nouvelEventId();
+  const instant = (globalThis as { __socleConsentementAt?: string | null }).__socleConsentementAt;
+  const charge: LeadPayload = {
+    ...payload,
+    source: "formulaire",
+    event_id: eventId,
+    origine_demande: origineDemande(),
+    /* l'instant de la case ; a defaut (case cochee sans passer par onChange), l'instant de l'envoi */
+    consentement_at: payload.consent ? instant || new Date().toISOString() : undefined,
+  };
   let response: Response;
   try {
     response = await fetch(`${API_BASE}/api/leads`, {
       method: "POST",
-      headers: { "content-type": "application/json", accept: "application/json" },
-      body: JSON.stringify(payload),
+      headers: { "content-type": "application/json", accept: "application/json", "idempotency-key": eventId },
+      body: JSON.stringify(charge),
     });
   } catch {
-    throw new Error(
-      "Connexion impossible, vérifiez votre réseau ou réessayez dans un instant.",
-    );
+    throw new Error(MESSAGES[langue].reseau);
   }
 
-  if (!response.ok) {
-    let detail = "";
-    try {
-      const data = (await response.json()) as { error?: string; message?: string };
-      detail = data.message || data.error || "";
-    } catch {
-      /* ignore */
-    }
-    throw new Error(detail || `Envoi impossible (${response.status}). Merci de réessayer.`);
-  }
-
+  let corps: unknown = null;
   try {
-    return (await response.json()) as LeadResult;
+    corps = await response.json();
   } catch {
-    return {};
+    corps = null;
   }
+  const succes = response.ok && estSucces(corps);
+  if (!succes) throw new Error(MESSAGES[langue].echec);
+
+  const resultat = { ...(corps as Omit<LeadResult, "event_id">), event_id: eventId };
+  if (resultat.deja_recu !== true) signalerLeadSubmit(eventId);
+  return resultat;
 }
 
 /** Construit la charge au format reseau a partir des champs collectes. */
@@ -131,7 +209,7 @@ export function construireCharge(opts: {
     source_site: SITE_CONFIG.domainBare,
     source_page: typeof window !== "undefined" ? window.location.pathname : "/",
     form_type: opts.formType,
-    source: opts.formType,
+    source: "formulaire",
     name: nomComplet,
     phone: opts.telephone,
     email: opts.email,
