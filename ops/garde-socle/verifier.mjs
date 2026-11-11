@@ -911,6 +911,15 @@ export const EXCEPTIONS_PLAGES = [
     exemple: "Comptez 2 à 4 h de séchage ; réponse sous 24 à 48 h.",
   },
   {
+    sens: "en-tete d'un tableau de tarifs jour / nuit : la plage entre parentheses apres « Tag » ou « jour », et dans la meme rangee « Nacht », « Feiertag », « Wochenende », « nuit », « week-end », « dimanche » ou « férié »",
+    source: "faux positif de la contre-epreuve locale du 11.11, DE-helvetic-schluesseldienst.ch (« Situation | Tag (07–22 Uhr) | Nacht / Feiertag | Hinweis ») ; decision de Frederic : majorations et tarifs restent verts",
+    portee: "phrase",
+    zones: ["corps"],
+    motif: /(?<!\p{L})(?:Tag|Tagsüber|jour|journée)\s*\([^)]*\d[^)]*\)[^¦.!?]*?(?<!\p{L})(?:Nacht|Feiertag\p{L}*|Wochenende|nuit|week-end|dimanche|férié\p{L}*)(?!\p{L})/iu,
+    sauf: /(?<!\p{L})(?:erreichbar\p{L}*|Erreichbarkeit|ge[öo]ffnet|Öffnungszeit\p{L}*|joignables?|ouverts?|ouverture|appel\p{L}*|Anruf\p{L}*|anrufen|Telefon\p{L}*|t[ée]l[ée]phon\p{L}*|für\s+Sie\s+da|disponibles?|à\s+votre\s+(?:service|écoute))(?!\p{L})/iu,
+    exemple: "Situation | Tag (07–22 Uhr) | Nacht / Feiertag | Hinweis",
+  },
+  {
     sens: "une contrainte de chantier ou de bruit",
     source: "decision de Frederic du 09.11 (prompt v1.6.5, point c : « Montage vor 7 Uhr oder nach 22 Uhr nur nach Absprache »)",
     portee: "phrase",
@@ -978,11 +987,16 @@ export function plagesHoraires(texte, langue, zone = null) {
     const conforme = jours && debut === 600 && fin === 1140;
     /* v1.6.5 : dans le corps, une borne au-dela de 24 h est une duree (« 24 à 48 h »), pas une heure. */
     /*
-     * v1.6.5 (faux positif de la contre-epreuve locale du 11.11, DE-helvetic-kaminfeger.ch, pastille
-     * de duree « 1–2 h » d'une prestation) : dans le corps, sans jour ni minutes, une plage dont la
-     * borne haute vaut 4 h au plus, sans « Uhr », est une duree ; une plage d'ouverture ne finit pas entre minuit et 4 h.
+     * v1.6.5 (faux positifs de la contre-epreuve locale du 11.11 : pastilles de duree « 1–2 h »
+     * de DE-helvetic-kaminfeger.ch, « 3–6 h » de DE-helvetic-schluesseldienst.ch) : dans le corps,
+     * sans jour, sans minutes, sans « Uhr », une plage est une duree si sa borne haute vaut 4 h au
+     * plus (une ouverture ne finit pas entre minuit et 4 h), ou si elle est SEULE dans son bloc avec
+     * 6 h d'ecart au plus. « Ouvert de 2 h à 6 h. » ou « 8–18 h » seul restent rouges.
      */
-    const courte = !j1 && !uhr && !h1m && !h1c && !h1p && !h2m && !h2c && !h2p && Number(h2) <= 4 && Number(h1) < Number(h2);
+    const ouvreBloc = texte.lastIndexOf("¦", m.index) + 1;
+    const fermeBloc = (() => { const j = texte.indexOf("¦", m.index + m[0].length); return j < 0 ? texte.length : j; })();
+    const seule = texte.slice(ouvreBloc, fermeBloc).replace(m[0], "").replace(/[\s·•,;:()]/g, "") === "";
+    const courte = !j1 && !uhr && !h1m && !h1c && !h1p && !h2m && !h2c && !h2p && Number(h1) < Number(h2) && (Number(h2) <= 4 || (seule && Number(h2) - Number(h1) <= 6));
     const duree = zone === "corps" && (Number(h1) > 24 || Number(h2) > 24 || courte);
     const exception = conforme || duree ? null : exceptionPlage(texte, m.index, m.index + m[0].length, langue, zone);
     if (duree) { out.push({ texte: m[0].trim(), conforme: true, exception: "une duree, pas une heure du jour" }); continue; }
