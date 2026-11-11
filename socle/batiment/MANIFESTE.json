@@ -1,6 +1,6 @@
 {
   "socle": "batiment",
-  "version": 9,
+  "version": 10,
   "note": "Empreintes du contenu normalise (zones libres retirees). Refaire avec: node ops/garde-socle/manifeste.mjs",
   "fichiers": [
     {
@@ -42,7 +42,7 @@
     {
       "source": "src/data/navigation.ts",
       "chemin": "src/data/navigation.ts",
-      "empreinte": "db6d4664cd530eee7ebf5a03466bdea6a0cb060e21d5767cd7129baa6a485a51"
+      "empreinte": "c35114cff6fc4fab23b4a722fcb7a447859c070518db868c49fdc3ceb7651ccd"
     },
     {
       "source": "src/lib/api.ts",
@@ -57,7 +57,7 @@
     {
       "source": "scripts/socle-liens.mjs",
       "chemin": "scripts/socle-liens.mjs",
-      "empreinte": "60bdd01bc53e7414297c4c1560aa1e4290f6fbd52627062e0b065648f577f9b5"
+      "empreinte": "9e26d9fae73835f4c71ec771ec40fba72ae909b74b88612af7b187303517f31a"
     },
     {
       "source": "deploy/csp-batiment.conf",
@@ -67,7 +67,7 @@
     {
       "source": "../../ops/garde-socle/verifier.mjs",
       "chemin": "scripts/garde-socle.mjs",
-      "empreinte": "6d3b89be363619f96006bfda7c80d4966aabb8f1a00ed837a823d11279682545"
+      "empreinte": "757eb73ac7923dabacbe9f7d145d35fee53a350486ff1ce1fdd2153094c4784f"
     }
   ]
 }

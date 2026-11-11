@@ -623,8 +623,11 @@ const TELEFON = new RegExp(TOURNURES_TELEFON.map(([, m]) => `(?:${m})`).join("|"
  * 0XX XXX XX XX, +41 XX XXX XX XX, 0041..., 0800 XXX XXX, espaces facultatifs.
  * Le champ du client (« Telefon * », « Telefonnummer » comme libelle) ne porte
  * pas de numero : il passe.
+ * v1.6.6 (trou signale le 11.11) : un point ou une virgule de ponctuation apres
+ * le numero (« 044 555 66 77. ») ne le cache plus ; seul un chiffre apres eux
+ * (« 044 555 66 77.5 ») fait que ce n'est pas un numero.
  */
-export const NUMERO_SUISSE = /(?<![\d.,:/+-])(?:(?:\+|00)41\s?|0)(?:\d{2}\s?\d{3}\s?\d{2}\s?\d{2}|8\d{2}\s?\d{3}\s?\d{3})(?![\d.,])/gu;
+export const NUMERO_SUISSE = /(?<![\d.,:/+-])(?:(?:\+|00)41\s?|0)(?:\d{2}\s?\d{3}\s?\d{2}\s?\d{2}|8\d{2}\s?\d{3}\s?\d{3})(?!\d|[.,]\d)/gu;
 /*
  * Exception nommee (Frederic, 05.11) : le champ du formulaire qui demande le
  * numero DU CLIENT pour le rappeler. C'est son numero, pas le notre : le

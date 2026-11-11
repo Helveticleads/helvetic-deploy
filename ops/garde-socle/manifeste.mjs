@@ -56,7 +56,7 @@ const fichiers = FICHIERS.map((f) => {
 
 const manifeste = {
   socle: "batiment",
-  version: 9,
+  version: 10,
   note:
     "Empreintes du contenu normalise (zones libres retirees). " +
     "Refaire avec: node ops/garde-socle/manifeste.mjs",
