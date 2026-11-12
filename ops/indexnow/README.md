@@ -24,6 +24,8 @@ La cle du site est `HMAC-SHA256(INDEXNOW_SECRET, domaine)` en hexadecimal, tronq
 
 ## Limite connue
 
+Si au moins 2 adresses portent toutes le meme `<lastmod>`, c'est une date de build et non la date du contenu. Les modifiees sont alors ignorees : seules les ajoutees et les retirees partent, avec la notice `INDEXNOW_LASTMOD_UNIFORME`. Le premier passage envoie toujours tout le sitemap.
+
 Sans `<lastmod>` dans le sitemap, seules les adresses ajoutees et retirees sont signalees, pas les modifiees.
 
 ## Hors helvetic-deploy

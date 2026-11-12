@@ -54,16 +54,27 @@ export function lireSitemap(xml) {
   return out;
 }
 
-/** Adresses a signaler : ajoutees, modifiees, retirees ; tout si avant est null. */
+/** Au moins 2 adresses, toutes avec le meme <lastmod> : c'est la date du build, pas du contenu. */
+export function lastmodUniforme(sitemap) {
+  const v = [...sitemap.values()];
+  return v.length >= 2 && v[0] !== null && v.every((x) => x === v[0]);
+}
+
+/**
+ * Adresses a signaler : ajoutees, modifiees, retirees ; tout si avant est null
+ * (premier passage, meme avec un lastmod uniforme). Lastmod uniforme : les
+ * modifiees sont ignorees, seules les ajoutees et les retirees partent.
+ */
 export function differences(avant, apres) {
-  if (!avant) return { premier: true, ajoutees: [...apres.keys()], modifiees: [], retirees: [] };
+  if (!avant) return { premier: true, uniforme: false, ajoutees: [...apres.keys()], modifiees: [], retirees: [] };
+  const uniforme = lastmodUniforme(apres);
   const ajoutees = [], modifiees = [], retirees = [];
   for (const [loc, lm] of apres) {
     if (!avant.has(loc)) ajoutees.push(loc);
-    else if (avant.get(loc) !== lm) modifiees.push(loc);
+    else if (!uniforme && avant.get(loc) !== lm) modifiees.push(loc);
   }
   for (const loc of avant.keys()) if (!apres.has(loc)) retirees.push(loc);
-  return { premier: false, ajoutees, modifiees, retirees };
+  return { premier: false, uniforme, ajoutees, modifiees, retirees };
 }
 
 const duDomaine = (u, domaine) => {
@@ -93,6 +104,7 @@ export async function envoyer({ domaine, nouveau, avant, env = process.env, dela
   if (!apres) return avertir(`sitemap du build illisible ou non urlset : ${nouveau}`), "avertissement";
   const premierPassage = !fs.existsSync(path.join(avant, "cle-presente"));
   const diff = differences(premierPassage ? null : lireSitemap(lireSi(path.join(avant, "sitemap.xml"))), apres);
+  if (diff.uniforme) console.log("::notice title=IndexNow::INDEXNOW_LASTMOD_UNIFORME lastmod identique sur toutes les adresses : modifiees ignorees, seules les ajoutees et retirees partent");
   const { urlList, horsDomaine, tronquees } = lot(diff, d);
   console.log(`INDEXNOW_DIFF premier=${diff.premier} ajoutees=${diff.ajoutees.length} modifiees=${diff.modifiees.length} retirees=${diff.retirees.length} hors_domaine=${horsDomaine} envoyees=${urlList.length} tronquees=${tronquees}`);
   if (tronquees) avertir(`plafond ${PLAFOND} atteint, ${tronquees} adresse(s) non envoyee(s)`);

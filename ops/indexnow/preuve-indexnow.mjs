@@ -22,7 +22,7 @@ import http from "node:http";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { cleDuDomaine, differences, envoyer, lireSitemap, lot, PLAFOND } from "./indexnow.mjs";
+import { cleDuDomaine, differences, envoyer, lastmodUniforme, lireSitemap, lot, PLAFOND } from "./indexnow.mjs";
 
 const ici = path.dirname(fileURLToPath(import.meta.url));
 const racine = path.resolve(ici, "../..");
@@ -104,6 +104,28 @@ constat(etat.recus.length === 2 && etat.recus.every((r) => r.corps.urlList.lengt
 etat.recus = [];
 x = await capture(() => envoyer({ ...cas({ avant: APRES, apres: APRES }), env: ENV }));
 constat(x.r === "rien" && etat.recus.length === 0, "sitemaps identiques : aucun envoi");
+
+/* 5 bis. Lastmod uniforme (date du build) : modifiees ignorees */
+const UNI = (d, pages) => SM(pages.map((p) => [U(p), d]));
+const envoyees = () => etat.recus.flatMap((r) => r.corps.urlList);
+const NOTICE = /::notice title=IndexNow::INDEXNOW_LASTMOD_UNIFORME/;
+etat.recus = [];
+x = await capture(() => envoyer({ ...cas({ avant: UNI("2026-11-11", ["/", "/a/"]), apres: UNI("2026-11-12", ["/", "/a/", "/neuf/"]) }), env: ENV }));
+constat(x.r === "ok" && JSON.stringify(envoyees()) === JSON.stringify([U("/neuf/")]) && NOTICE.test(x.out), "lastmod uniforme sur 3 adresses dont 1 ajoutee : 1 envoyee, notice INDEXNOW_LASTMOD_UNIFORME");
+constat(x.out.split("\n").filter((l) => NOTICE.test(l)).every((l) => !l.includes(D) && !l.includes(CLE)), "notice sans domaine ni cle");
+etat.recus = [];
+x = await capture(() => envoyer({ ...cas({ avant: UNI("2026-11-11", ["/", "/a/", "/b/"]), apres: UNI("2026-11-12", ["/", "/a/", "/b/"]) }), env: ENV }));
+constat(x.r === "rien" && etat.recus.length === 0 && NOTICE.test(x.out), "lastmod uniforme sans changement d'adresse : 0 envoi");
+etat.recus = [];
+x = await capture(() => envoyer({ ...cas({ avant: UNI("2026-11-11", ["/", "/a/"]), apres: UNI("2026-11-12", ["/", "/a/"]).replace("2026-11-12", "2026-11-01") }), env: ENV }));
+constat(x.r === "ok" && envoyees().length === 2 && !NOTICE.test(x.out), "lastmod varies : les modifiees partent, pas de notice");
+etat.recus = [];
+x = await capture(() => envoyer({ ...cas({ avant: UNI("2026-11-11", ["/", "/a/"]), apres: UNI("2026-11-12", ["/", "/a/", "/neuf/"]), clePresente: false }), env: ENV }));
+constat(x.r === "ok" && envoyees().length === 3 && !NOTICE.test(x.out), "premier passage : tout le sitemap malgre un lastmod uniforme");
+etat.recus = [];
+x = await capture(() => envoyer({ ...cas({ avant: SM([[U("/"), null], [U("/a/"), null]]), apres: SM([[U("/"), null], [U("/a/"), null], [U("/neuf/"), null]]) }), env: ENV }));
+constat(x.r === "ok" && JSON.stringify(envoyees()) === JSON.stringify([U("/neuf/")]) && !NOTICE.test(x.out), "sans lastmod : ajoutees et retirees seulement, comportement inchange");
+constat(!lastmodUniforme(lireSitemap(UNI("2026-11-12", ["/"]))), "une seule adresse : pas de lastmod uniforme");
 
 /* 6. Echecs non bloquants */
 etat.codePost = 500; etat.recus = [];
