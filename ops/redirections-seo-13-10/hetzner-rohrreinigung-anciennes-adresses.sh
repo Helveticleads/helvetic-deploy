@@ -146,6 +146,7 @@ ecart() {
 }
 # avant toute ecriture : on ne touche a rien
 ecart_sec() {
+  ANOMALIE="$1"   # pour que le piege de sortie sache que la sortie est voulue
   dire ""; ligne; dire "ANOMALIE : $1"
   dire ""
   dire "VERDICT : ECART (rien touche : $1)"
