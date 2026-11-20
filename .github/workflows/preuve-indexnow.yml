@@ -1,0 +1,31 @@
+name: Preuve IndexNow
+
+# Envoi simule vers un serveur local : aucune requete vers api.indexnow.org.
+on:
+  pull_request:
+    paths:
+      - ops/indexnow/**
+      - ops/garde-socle/preuve-opt-in.mjs
+      - .github/workflows/deploy-infomaniak.yml
+      - .github/workflows/preuve-indexnow.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  preuve-indexnow:
+    name: preuve-indexnow
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Diff de sitemaps, plafond, echec non bloquant, refus en PR
+        run: node ops/indexnow/preuve-indexnow.mjs
+      - name: Etapes ajoutees au deploiement conditionnees ou non bloquantes
+        run: node ops/garde-socle/preuve-opt-in.mjs origin/main

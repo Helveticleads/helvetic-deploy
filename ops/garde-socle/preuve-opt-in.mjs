@@ -65,6 +65,7 @@ function etapes(yaml) {
     }
     const mSi = l.match(/^ {8}if: (.+)$/);
     if (mSi && courante && courante.si === null) courante.si = mSi[1].trim();
+    if (courante && /^ {8}continue-on-error: true\s*$/.test(l)) courante.nonBloquante = true;
   }
   if (courante) out.push(courante);
   return out;
@@ -159,6 +160,9 @@ if (avant) {
 
   const ajoutees = eApres.filter((e) => !nomsAvant.has(e.nom));
   for (const n of ajoutees) {
+    // IndexNow (decision du 11.11) vise tout le reseau : admise sans opt-in
+    // a condition de ne jamais pouvoir rendre un deploiement rouge.
+    if (n.nom.startsWith("IndexNow") && n.nonBloquante) continue;
     if (!n.si || !n.si.includes("inputs.garde_socle")) {
       defauts.push(
         `etape:« ${n.nom} » est ajoutee sans condition sur inputs.garde_socle (condition : ${n.si ?? "aucune"})`,
@@ -166,9 +170,9 @@ if (avant) {
     }
   }
   console.log(
-    `  OK ${eAvant.length} etapes de ${refBase} inchangees, ${ajoutees.length} ajoutee(s), toutes conditionnees`,
+    `  OK ${eAvant.length} etapes de ${refBase} inchangees, ${ajoutees.length} ajoutee(s), conditionnees sur garde_socle ou IndexNow non bloquantes`,
   );
-  for (const n of ajoutees) console.log(`     + ${n.nom}  [if: ${n.si}]`);
+  for (const n of ajoutees) console.log(`     + ${n.nom}  [if: ${n.si}]${n.nonBloquante ? " [continue-on-error]" : ""}`);
 }
 
 if (defauts.length > 0) {
@@ -176,4 +180,4 @@ if (defauts.length > 0) {
   for (const d of defauts) console.error(`  - ${d}`);
   process.exit(1);
 }
-console.log("\nPREUVE_OPT_IN_OK deploy-infomaniak.yml inchange pour les appelants qui ne demandent rien");
+console.log("\nPREUVE_OPT_IN_OK rien de bloquant ajoute pour les appelants qui ne demandent rien");
