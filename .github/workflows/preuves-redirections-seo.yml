@@ -26,5 +26,7 @@ jobs:
           1b729809ca5aabaa53e2f571c300ed098c670c8c89f0fac5535e0bf9bd33d1af  ops/redirections-seo-13-10/fixtures/anciennes-adresses-vers-kanton.conf
           9f5cb2b0c26d53dd45feef857b3300af4b6c8b31750d042c181e2ab2e690017f  ops/redirections-seo-13-10/fixtures/legacy-intention-301.conf
           EOF
-      - name: Les neuf cas de la pose, sur un faux /etc/nginx
+      - name: Les neuf cas de la pose des anciennes adresses, sur un faux /etc/nginx
         run: bash ops/redirections-seo-13-10/preuves.sh
+      - name: Les neuf cas du www vers l'apex, sur un faux /etc/nginx
+        run: bash ops/redirections-seo-13-10/preuves-www.sh

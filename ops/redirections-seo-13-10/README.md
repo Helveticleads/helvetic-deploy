@@ -6,8 +6,9 @@ certificat, aucun DNS, aucun pare-feu, aucun autre site de l'hote.
 
 | Hote | Site | Ce qui est pose | Etat |
 | --- | --- | --- | --- |
-| Hetzner | helvetic-rohrreinigung.ch | 457 anciennes adresses de communes en noindex envoyees en **une seule** 301 vers une page en index, et le slug Legacy `/einsatz/rohrreinigung-Werktage` recible sur `/anliegen/rohrreinigung-24h/` | script pret, pose par Frederic |
-| Infomaniak DE | helvetic-pool.ch | `www.helvetic-pool.ch` en une seule 301 vers la forme sans www | a venir dans la meme branche |
+| Hetzner | helvetic-rohrreinigung.ch | 457 anciennes adresses de communes en noindex envoyees en **une seule** 301 vers une page en index, et le slug Legacy `/einsatz/rohrreinigung-Werktage` recible sur `/anliegen/rohrreinigung-24h/` | pose le 20.11 a 16:56 UTC, VERDICT REUSSI, preuve servie faite |
+| Infomaniak DE | helvetic-pool.ch | `www.helvetic-pool.ch` en une seule 301 vers la forme sans www | script pret (`www-vers-apex.sh`) |
+| Hetzner | helvetic-rohrreinigung.ch | `www.helvetic-rohrreinigung.ch`, meme chose, meme script | script pret, apres pool |
 
 ## Hetzner, helvetic-rohrreinigung.ch
 
@@ -87,3 +88,41 @@ include deja presente, `nginx -t` rouge apres la pose, une adresse qui ne fait
 pas la 301, mode verification, verrou pris, hote occupe. Pour chaque ECART,
 les preuves verifient que le vhost et le snippet Legacy sont revenus a leur
 etat d'avant, octet pour octet.
+
+## Le www vers la forme sans www
+
+`www-vers-apex.sh --verifier|--poser <domaine>`, pour `helvetic-pool.ch`
+(Infomaniak DE) et `helvetic-rohrreinigung.ch` (Hetzner). Il met le vhost a la
+forme que quatre sites d'Infomaniak DE servent deja (bettwanzen, nagetiere,
+schaedlingsprofi, wespen-hornissen) :
+
+1. le bloc 443 du site perd le `www` de son `server_name` ;
+2. un bloc 443 neuf ne porte que le `www` et renvoie 301 vers l'apex. Il
+   reprend **mot pour mot** les lignes `listen`, `ssl_*` et `include` du bloc
+   du site : aucune valeur de certificat n'est recopiee a la main ;
+3. le bloc 80 ecrit par certbot (deux `if ($host = ...)` vers `https://$host`,
+   puis `return 404`) devient un seul `return 301` vers l'apex. C'est ce qui
+   supprime la chaine `http://www` vers `https://www` vers l'apex.
+
+`ipv6only=on` et `default_server` sont **retires** de la copie : ce sont des
+options de la socket, pas du site, et nginx refuse de les voir deux fois pour
+la meme adresse. Sur l'hote Hetzner un seul vhost porte `ipv6only=on`, et c'est
+justement celui de rohrreinigung : copier la ligne telle quelle aurait fait
+echouer `nginx -t` sur `duplicate listen options`. Le cas I des preuves le
+verifie.
+
+Le bloc 80 etant reecrit en entier, le script refuse de travailler s'il y
+trouve une seule ligne qu'il ne reconnait pas (cas B). Il refuse aussi si le
+certificat ne couvre pas le www (cas D), si un bloc `www` existe deja (cas C),
+ou si le www redirige deja.
+
+Les preuves apres rechargement : **tous** les noms de l'hote, apex et www, sont
+mesures avant et apres, et seul le www du domaine traite doit avoir change ;
+le www fait une seule 301 vers l'apex pour l'accueil, pour une page profonde
+lue dans le sitemap servi, pour une adresse avec parametres, et en http ;
+l'apex et sa page profonde repondent toujours 200.
+
+`bash ops/redirections-seo-13-10/preuves-www.sh` : neuf cas, sur les **deux**
+vhosts reels. Le bouchon `curl` y est un petit nginx de papier qui lit les
+blocs `server` du faux `/etc/nginx` et repond comme le vrai le ferait, si bien
+que les preuves du script sont vraiment exercees, pas seulement ses gardes.
