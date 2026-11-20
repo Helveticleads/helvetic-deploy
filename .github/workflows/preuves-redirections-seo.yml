@@ -1,0 +1,30 @@
+name: Preuves redirections SEO 13-10
+
+# Le script de pose tourne sur un faux /etc/nginx, avec des bouchons a la
+# place de nginx, systemctl, pgrep et curl. Aucun hote n'est joint, aucun
+# reseau n'est ouvert : la CI ne touche jamais un serveur.
+on:
+  pull_request:
+    paths:
+      - ops/redirections-seo-13-10/**
+      - .github/workflows/preuves-redirections-seo.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  preuves-redirections:
+    name: preuves-redirections
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Les deux fichiers a poser portent bien l'empreinte du depot du site
+        run: |
+          sha256sum -c - <<'EOF'
+          1b729809ca5aabaa53e2f571c300ed098c670c8c89f0fac5535e0bf9bd33d1af  ops/redirections-seo-13-10/fixtures/anciennes-adresses-vers-kanton.conf
+          9f5cb2b0c26d53dd45feef857b3300af4b6c8b31750d042c181e2ab2e690017f  ops/redirections-seo-13-10/fixtures/legacy-intention-301.conf
+          EOF
+      - name: Les neuf cas de la pose, sur un faux /etc/nginx
+        run: bash ops/redirections-seo-13-10/preuves.sh
